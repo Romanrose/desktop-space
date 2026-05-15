@@ -54,9 +54,9 @@ const rendererUrl = process.env.VITE_DEV_SERVER_URL ?? "";
 const stateFile = () => path.join(app.getPath("userData"), "omega-state.json");
 const sessionLog: ChatLine[] = [];
 
-let floatingWindow: BrowserWindow | null = null;
-let capsuleWindow: BrowserWindow | null = null;
-let tray: Tray | null = null;
+let floatingWindow: InstanceType<typeof BrowserWindow> | null = null;
+let capsuleWindow: InstanceType<typeof BrowserWindow> | null = null;
+let tray: InstanceType<typeof Tray> | null = null;
 let persisted: PersistedData;
 
 const defaultState: OmegaState = {
