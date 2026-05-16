@@ -29,10 +29,7 @@ body,
 }
 
 body {
-  background:
-    radial-gradient(circle at 16% 18%, rgba(255, 250, 240, 0.95) 0 4px, transparent 5px),
-    radial-gradient(circle at 72% 26%, rgba(245, 195, 28, 0.2) 0 6px, transparent 7px),
-    linear-gradient(180deg, #bde6d4 0%, #e9f5d8 50%, #f5e4b9 100%);
+  background: transparent;
 }
 
 button,
@@ -65,25 +62,13 @@ input:focus-visible {
   position: relative;
   width: 100vw;
   height: 100vh;
-  background:
-    radial-gradient(circle at 18% 20%, rgba(255, 253, 244, 0.86) 0 46px, transparent 47px),
-    radial-gradient(circle at 24% 17%, rgba(255, 253, 244, 0.62) 0 28px, transparent 29px),
-    radial-gradient(circle at 84% 18%, rgba(245, 195, 28, 0.16) 0 56px, transparent 57px),
-    linear-gradient(180deg, #bde6d4 0%, #e7f3d7 58%, #f3dfad 100%);
+  background: transparent;
   user-select: none;
   -webkit-app-region: drag;
 }
 
 .floating-shell::before {
-  position: absolute;
-  inset: auto 0 0;
-  height: 34%;
-  background:
-    radial-gradient(circle at 12% 34%, #f8f4e8 0 5px, transparent 6px),
-    radial-gradient(circle at 64% 48%, #fff8d8 0 4px, transparent 5px),
-    linear-gradient(180deg, rgba(138, 198, 138, 0), rgba(138, 198, 138, 0.32));
-  content: "";
-  pointer-events: none;
+  display: none;
 }
 
 .floating-shell button,

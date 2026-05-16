@@ -140,7 +140,7 @@ function createFloatingWindow() {
     hasShadow: false,
     fullscreenable: false,
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false
     }
@@ -175,7 +175,7 @@ function createCapsuleWindow() {
     title: "Ω 太空舱",
     backgroundColor: "#07111f",
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false
     }
