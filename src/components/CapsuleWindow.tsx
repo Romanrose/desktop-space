@@ -22,8 +22,9 @@ export function CapsuleWindow({ state, updateState }: Props) {
     await updateState({
       prologueDone: true,
       currentMode: "idle",
-      mood: Math.max(20, state.mood + 1),
-      emotion: "calm_positive"
+      mood: Math.max(30, state.mood + 1),
+      emotion: "calm_positive",
+      lastActiveTime: Date.now()
     });
     await window.omega.window.showFloating();
     await window.omega.window.closeCapsule();
@@ -58,7 +59,7 @@ export function CapsuleWindow({ state, updateState }: Props) {
       <header className="capsule-topbar">
         <div>
           <strong>Ω 太空舱</strong>
-          <span>WASD 移动，靠近书桌后交互</span>
+          {!state.prologueDone && <span>WASD 移动，靠近书桌后单击交互</span>}
         </div>
         <button type="button" onClick={() => window.omega.window.closeCapsule()}>关闭太空舱</button>
       </header>

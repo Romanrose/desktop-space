@@ -9,7 +9,9 @@ type OmegaEmotion =
   | "happy"
   | "shy"
   | "sad"
-  | "proud";
+  | "proud"
+  | "excited"
+  | "fearful";
 
 type FeatureIntent = "alarm" | "focus" | "capsule" | "game" | null;
 
@@ -34,14 +36,21 @@ type OmegaState = {
   mood: number;
   affinity: number;
   emotion: OmegaEmotion;
-  currentMode: "idle" | "chatting" | "capsule" | "prologue";
+  currentMode: "idle" | "chatting" | "capsule" | "prologue" | "focus" | "sleep";
   floatingPosition?: { x: number; y: number };
   unlocked: {
     activeGreeting: boolean;
     cleanCapsule: boolean;
     game: boolean;
     writing: boolean;
+    bookshelf: boolean;
+    construction: boolean;
   };
+  sessionStartTime: number;
+  lastActiveTime: number;
+  totalFocusTime: number;
+  pendingStoryComplete: boolean;
+  capsuleBackgroundDirty: boolean;
 };
 
 type PersistedData = {
@@ -62,7 +71,7 @@ let persisted: PersistedData;
 const defaultState: OmegaState = {
   nickname: "",
   prologueDone: false,
-  mood: 20,
+  mood: 30,
   affinity: 0,
   emotion: "calm_negative",
   currentMode: "prologue",
@@ -70,8 +79,15 @@ const defaultState: OmegaState = {
     activeGreeting: false,
     cleanCapsule: false,
     game: false,
-    writing: false
-  }
+    writing: false,
+    bookshelf: false,
+    construction: false
+  },
+  sessionStartTime: Date.now(),
+  lastActiveTime: Date.now(),
+  totalFocusTime: 0,
+  pendingStoryComplete: false,
+  capsuleBackgroundDirty: true
 };
 
 function loadLocalEnv() {
@@ -110,11 +126,12 @@ async function savePersistedData() {
   await writeFile(stateFile(), JSON.stringify(persisted, null, 2), "utf8");
 }
 
-function rendererPath(view: "floating" | "capsule") {
+function rendererPath(view: "floating" | "capsule", prologue = false) {
+  const query = `view=${view}${prologue ? "&prologue=1" : ""}`;
   if (isDev) {
-    return `${rendererUrl}?view=${view}`;
+    return `${rendererUrl}?${query}`;
   }
-  return `file://${path.join(__dirname, "../dist/index.html")}?view=${view}`;
+  return `file://${path.join(__dirname, "../dist/index.html")}?${query}`;
 }
 
 function createFloatingWindow() {
@@ -161,9 +178,9 @@ function createFloatingWindow() {
   return floatingWindow;
 }
 
-function createCapsuleWindow() {
+function createCapsuleWindow(prologue = false) {
   if (capsuleWindow) {
-    capsuleWindow.show();
+    capsuleWindow.focus();
     return capsuleWindow;
   }
 
@@ -181,10 +198,10 @@ function createCapsuleWindow() {
     }
   });
 
-  capsuleWindow.loadURL(rendererPath("capsule"));
+  capsuleWindow.loadURL(rendererPath("capsule", prologue));
   capsuleWindow.on("closed", () => {
     capsuleWindow = null;
-    if (persisted.state.prologueDone) {
+    if (persisted.state.prologueDone && !floatingWindow) {
       createFloatingWindow();
     }
   });
@@ -197,15 +214,11 @@ function createTray() {
   tray.setToolTip("Ω Desktop Pet");
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: "打开悬浮窗", click: () => createFloatingWindow() },
+      { label: "显示悬浮窗", click: () => createFloatingWindow() },
+      { label: "隐藏悬浮窗", click: () => { if (floatingWindow) floatingWindow.hide(); } },
       { label: "打开太空舱", click: () => createCapsuleWindow() },
       { type: "separator" },
-      {
-        label: "退出游戏",
-        click: () => {
-          app.quit();
-        }
-      }
+      { label: "退出游戏", click: () => app.quit() }
     ])
   );
 }
@@ -278,7 +291,7 @@ function parseJsonResponse(raw: string): OmegaAIResponse | null {
 
 function normalizeAIResponse(response: Partial<OmegaAIResponse> | null, fallbackText: string): OmegaAIResponse | null {
   if (!response?.reply) return null;
-  const allowedEmotions: OmegaEmotion[] = ["calm_positive", "calm_negative", "happy", "shy", "sad", "proud"];
+  const allowedEmotions: OmegaEmotion[] = ["calm_positive", "calm_negative", "happy", "shy", "sad", "proud", "excited", "fearful"];
   const allowedIntent: FeatureIntent[] = ["alarm", "focus", "capsule", "game", null];
   const emotion = allowedEmotions.includes(response.emotion as OmegaEmotion)
     ? (response.emotion as OmegaEmotion)
@@ -328,7 +341,7 @@ async function cloudOmegaResponse(text: string, screenshot?: string): Promise<Om
           {
             role: "system",
             content:
-              "你是桌宠游戏角色Ω。用中文、简短、内向但温柔的语气回应玩家。必须只返回JSON，不要Markdown。字段为 reply, emotion, moodDelta, affinityDelta, memorySummary, featureIntent。emotion只能是 calm_positive, calm_negative, happy, shy, sad, proud。featureIntent只能是 alarm, focus, capsule, game, null。"
+              "你是桌宠游戏角色Ω。用中文、简短、内向但温柔的语气回应玩家。必须只返回JSON，不要Markdown。字段为 reply, emotion, moodDelta, affinityDelta, memorySummary, featureIntent。emotion只能是 calm_positive, calm_negative, happy, shy, sad, proud, excited, fearful。featureIntent只能是 alarm, focus, capsule, game, null。"
           },
           { role: "user", content: userContent }
         ],
@@ -354,13 +367,11 @@ app.whenReady().then(async () => {
   if (persisted.state.prologueDone) {
     createFloatingWindow();
   } else {
-    createCapsuleWindow();
+    createCapsuleWindow(true);
   }
 });
 
-app.on("window-all-closed", () => {
-  // Keep the desktop pet alive in the tray until the user explicitly exits.
-});
+app.on("window-all-closed", () => {});
 
 ipcMain.handle("window:openCapsule", () => {
   persisted.state.currentMode = "capsule";
@@ -376,6 +387,10 @@ ipcMain.handle("window:showFloating", () => {
   persisted.state.currentMode = "idle";
   void savePersistedData();
   createFloatingWindow();
+});
+
+ipcMain.handle("window:hideFloating", () => {
+  floatingWindow?.hide();
 });
 
 ipcMain.handle("window:setFloatingPosition", async (_event, position: { x: number; y: number }) => {
