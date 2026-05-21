@@ -1,12 +1,12 @@
-import type { OmegaBridge } from "../electron/preload";
-
 export type OmegaEmotion =
   | "calm_positive"
   | "calm_negative"
   | "happy"
   | "shy"
   | "sad"
-  | "proud";
+  | "proud"
+  | "excited"
+  | "fearful";
 
 export type FeatureIntent = "alarm" | "focus" | "capsule" | "game" | null;
 
@@ -24,27 +24,28 @@ export type OmegaAIResponse = {
   memorySummary?: string;
   featureIntent?: FeatureIntent;
   state: OmegaState;
-  screenshotCaptured: boolean;
+  screenshotCaptured?: boolean;
 };
 
 export type OmegaState = {
   nickname: string;
   prologueDone: boolean;
-  mood: number;
-  affinity: number;
+  mood: number;               // 心境值 15-1000
+  affinity: number;           // 好感度 >=0
   emotion: OmegaEmotion;
-  currentMode: "idle" | "chatting" | "capsule" | "prologue";
+  currentMode: "idle" | "chatting" | "capsule" | "prologue" | "focus" | "sleep";
   floatingPosition?: { x: number; y: number };
   unlocked: {
     activeGreeting: boolean;
     cleanCapsule: boolean;
     game: boolean;
     writing: boolean;
+    bookshelf: boolean;       // 新增
+    construction: boolean;    // 新增
   };
+  sessionStartTime: number;
+  lastActiveTime: number;
+  totalFocusTime: number;
+  pendingStoryComplete: boolean;
+  capsuleBackgroundDirty: boolean; // true=脏乱，false=整洁
 };
-
-declare global {
-  interface Window {
-    omega: OmegaBridge;
-  }
-}
