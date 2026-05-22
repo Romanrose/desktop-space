@@ -70,6 +70,7 @@ test.describe("Ω desktop pet functional prototype", () => {
     await expect(page.getByText("嗯，我也有一点开心。像是舱壁上的灯忽然稳定了一些。")).toBeVisible();
     await expect(page.getByText("Ω · 开心 · 好感 13")).toBeVisible();
 
+    await page.getByRole("button", { name: "Ω" }).click();
     await page.getByRole("button", { name: "记录" }).click();
     const recordList = page.locator(".record-list");
     await expect(recordList).toContainText("测试员：");
@@ -88,6 +89,7 @@ test.describe("Ω desktop pet functional prototype", () => {
     await page.getByRole("button", { name: "关闭聊天" }).click();
     await expect(page.getByLabel("Ω 对话")).toBeHidden();
 
+    await page.getByRole("button", { name: "Ω" }).click();
     await page.getByRole("button", { name: "输入" }).click();
     await expect(page.getByLabel("Ω 对话")).toBeVisible();
     await page.keyboard.press("Escape");

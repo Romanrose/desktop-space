@@ -139,9 +139,14 @@ input:focus-visible {
   height: 360px;
   border: 0;
   background: transparent;
+  cursor: grab;
   filter: drop-shadow(0 24px 22px rgba(93, 64, 55, 0.22));
   transform: translateX(-50%);
   transition: transform 0.24s ease, filter 0.24s ease;
+}
+
+.omega-avatar:active {
+  cursor: grabbing;
 }
 
 .omega-avatar:hover {
@@ -261,12 +266,12 @@ input:focus-visible {
 
 .dialogue-bubble {
   position: absolute;
-  left: calc(50% + 64px);
-  top: 118px;
+  right: 18px;
+  top: 92px;
   display: grid;
-  width: min(330px, calc(50vw - 26px));
-  gap: 10px;
-  transform: translateX(-4px);
+  width: min(268px, calc(100vw - 136px));
+  min-width: 236px;
+  gap: 8px;
 }
 
 .dialogue-close {
@@ -303,9 +308,9 @@ input:focus-visible {
 .dialogue-bubble .chat-stream {
   position: relative;
   z-index: 1;
-  min-height: 106px;
-  max-height: 210px;
-  padding: 16px;
+  min-height: 92px;
+  max-height: 178px;
+  padding: 14px 15px;
   border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: 24px 24px 24px 10px;
   background: rgba(255, 250, 240, 0.84);
@@ -360,11 +365,11 @@ input:focus-visible {
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 8px;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 6px;
   align-items: center;
   margin-top: 0;
-  padding: 8px;
+  padding: 6px;
   border: 1px solid rgba(255, 255, 255, 0.64);
   border-radius: 999px;
   background: rgba(255, 250, 240, 0.74);
@@ -392,7 +397,8 @@ input:focus-visible {
   border: 0;
   background: transparent;
   box-shadow: none;
-  padding: 7px 8px;
+  padding: 6px 6px;
+  font-size: 14px;
 }
 
 .chat-form > input::placeholder {
@@ -409,9 +415,23 @@ input:focus-visible {
 }
 
 .dialogue-bubble .screen-toggle {
-  max-width: 28px;
+  display: grid;
+  width: 24px;
+  height: 28px;
+  place-items: center;
   overflow: hidden;
   white-space: nowrap;
+}
+
+.dialogue-bubble .screen-toggle input {
+  width: 16px;
+  height: 16px;
+}
+
+.dialogue-bubble .chat-form button {
+  min-height: 32px;
+  padding: 6px 11px;
+  font-size: 13px;
 }
 
 .screen-toggle input {

@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, PointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ChatLine, OmegaAIResponse, OmegaState } from "../types";
 
 type Props = {
@@ -24,6 +24,14 @@ export function FloatingWindow({ state, setState, updateState }: Props) {
   const [busy, setBusy] = useState(false);
   const [sessionLog, setSessionLog] = useState<ChatLine[]>([]);
   const [moodFlash, setMoodFlash] = useState<string | null>(null);
+  const dragRef = useRef<{
+    pointerId: number;
+    startPointerX: number;
+    startPointerY: number;
+    startWindowX: number;
+    startWindowY: number;
+    dragged: boolean;
+  } | null>(null);
 
   const recentLines = useMemo(() => sessionLog.slice(-4), [sessionLog]);
 
@@ -45,6 +53,9 @@ export function FloatingWindow({ state, setState, updateState }: Props) {
 
   async function openPanel(nextPanel: typeof panel) {
     setPanel(nextPanel);
+    if (nextPanel) {
+      setMenu(null);
+    }
     if (nextPanel === "record") {
       await refreshLog();
     }
@@ -91,6 +102,45 @@ export function FloatingWindow({ state, setState, updateState }: Props) {
     return options[Math.floor(Math.random() * options.length)];
   }
 
+  function toggleRootMenu() {
+    setPanel(null);
+    setMenu(menu ? null : "root");
+  }
+
+  function startAvatarPointer(event: PointerEvent<HTMLButtonElement>) {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startPointerX: event.screenX,
+      startPointerY: event.screenY,
+      startWindowX: window.screenX,
+      startWindowY: window.screenY,
+      dragged: false
+    };
+  }
+
+  function moveAvatarPointer(event: PointerEvent<HTMLButtonElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const deltaX = event.screenX - drag.startPointerX;
+    const deltaY = event.screenY - drag.startPointerY;
+    if (Math.hypot(deltaX, deltaY) < 4 && !drag.dragged) return;
+    drag.dragged = true;
+    void window.omega.window.setFloatingPosition(
+      Math.round(drag.startWindowX + deltaX),
+      Math.round(drag.startWindowY + deltaY)
+    );
+  }
+
+  function endAvatarPointer(event: PointerEvent<HTMLButtonElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    dragRef.current = null;
+    if (!drag.dragged) {
+      toggleRootMenu();
+    }
+  }
+
   return (
     <main className="floating-shell">
       <section className="mood-meter" aria-label="心境值">
@@ -104,7 +154,12 @@ export function FloatingWindow({ state, setState, updateState }: Props) {
       <button
         className={`omega-avatar omega-avatar--${state.emotion}`}
         type="button"
-        onClick={() => setMenu(menu ? null : "root")}
+        onPointerDown={startAvatarPointer}
+        onPointerMove={moveAvatarPointer}
+        onPointerUp={endAvatarPointer}
+        onPointerCancel={() => {
+          dragRef.current = null;
+        }}
         aria-label="Ω"
       >
         <img src="/assets/omega/omega-transparent.png" alt="Ω" />
