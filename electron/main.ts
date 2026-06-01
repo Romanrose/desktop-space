@@ -159,13 +159,16 @@ function createFloatingWindow() {
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      sandbox: false,
+      webSecurity: false
     }
   });
 
   floatingWindow.setAlwaysOnTop(true, "floating");
   floatingWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   floatingWindow.loadURL(rendererPath("floating"));
+  floatingWindow.webContents.openDevTools({ mode: "detach" });
   floatingWindow.on("moved", async () => {
     if (!floatingWindow) return;
     const [x, y] = floatingWindow.getPosition();
@@ -194,7 +197,9 @@ function createCapsuleWindow(prologue = false) {
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      sandbox: false,
+      webSecurity: false
     }
   });
 

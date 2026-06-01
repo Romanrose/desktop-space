@@ -1,3 +1,6 @@
+// 这是你的全局类型定义文件
+// 所有在多个组件中使用的类型都应该在这里定义
+
 export type OmegaEmotion =
   | "calm_positive"
   | "calm_negative"
@@ -23,15 +26,14 @@ export type OmegaAIResponse = {
   affinityDelta: number;
   memorySummary?: string;
   featureIntent?: FeatureIntent;
-  state: OmegaState;
-  screenshotCaptured?: boolean;
+  state?: OmegaState;
 };
 
 export type OmegaState = {
   nickname: string;
   prologueDone: boolean;
-  mood: number;               // 心境值 15-1000
-  affinity: number;           // 好感度 >=0
+  mood: number;
+  affinity: number;
   emotion: OmegaEmotion;
   currentMode: "idle" | "chatting" | "capsule" | "prologue" | "focus" | "sleep";
   floatingPosition?: { x: number; y: number };
@@ -40,12 +42,38 @@ export type OmegaState = {
     cleanCapsule: boolean;
     game: boolean;
     writing: boolean;
-    bookshelf: boolean;       // 新增
-    construction: boolean;    // 新增
+    bookshelf: boolean;
+    construction: boolean;
   };
   sessionStartTime: number;
   lastActiveTime: number;
   totalFocusTime: number;
   pendingStoryComplete: boolean;
-  capsuleBackgroundDirty: boolean; // true=脏乱，false=整洁
+  capsuleBackgroundDirty: boolean;
 };
+
+export type PersistedData = {
+  state: OmegaState;
+  memories: string[];
+};
+
+// 全局window.omega类型声明
+declare global {
+  interface Window {
+    omega: {
+      state: {
+        getSessionLog: () => Promise<ChatLine[]>;
+      };
+      ai: {
+        sendMessage: (payload: { text: string; includeScreenshot: boolean }) => Promise<
+          OmegaAIResponse & { state: OmegaState }
+        >;
+      };
+      window: {
+        openCapsule: () => Promise<void>;
+      };
+    };
+  }
+}
+
+export {};

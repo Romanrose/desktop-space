@@ -15,15 +15,17 @@
     "test:e2e": "cross-env NO_PROXY=127.0.0.1,localhost no_proxy=127.0.0.1,localhost playwright test"
   },
   "dependencies": {
+    "@greenmansk/react-live2d": "^0.1.1",
     "@vitejs/plugin-react": "^5.0.4",
     "electron": "^39.2.4",
-    "pixi.js": "^8.14.3",
+    "pixi-live2d-display": "^0.4.0",
+    "pixi.js": "^6.5.10",
     "react": "^19.2.1",
     "react-dom": "^19.2.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
-    "@types/node": "^24.10.1",
+    "@types/node": "^24.12.4",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "concurrently": "^9.2.1",

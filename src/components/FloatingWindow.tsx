@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ChatLine, OmegaAIResponse, OmegaState } from "../types";
+import Live2DModel from "../components/Live2DModel";
 
 type Props = {
   state: OmegaState;
@@ -28,7 +29,7 @@ export function FloatingWindow({ state, setState, updateState }: Props) {
   const [moodFlash, setMoodFlash] = useState<string | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
   const containerRef = useRef<HTMLDivElement>(null);
-  const idleTimer = useRef<NodeJS.Timeout | null>(null);
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const recentLines = useMemo(() => sessionLog.slice(-4), [sessionLog]);
 
@@ -103,7 +104,7 @@ export function FloatingWindow({ state, setState, updateState }: Props) {
         text,
         includeScreenshot
       })) as OmegaAIResponse;
-      setState(response.state);
+      setState(response.state!);
       setMoodFlash(`${response.moodDelta >= 0 ? "+" : ""}${response.moodDelta}`);
       setTimeout(() => setMoodFlash(null), 1100);
       await refreshLog();
@@ -142,17 +143,27 @@ export function FloatingWindow({ state, setState, updateState }: Props) {
         {moodFlash && <span className="mood-flash">{moodFlash}</span>}
       </section>
 
-      {/* Ω 角色（视线跟随） */}
+      {/* Ω 角色（Live2D） */}
       <button
         className={`omega-avatar omega-avatar--${state.emotion}`}
         type="button"
         onClick={(e) => { e.stopPropagation(); setMenu(menu ? null : "root"); }}
         aria-label="Ω"
         style={{
-          transform: `translate(${(mousePos.x - 0.5) * 8}px, ${(mousePos.y - 0.5) * 8}px)`
+          transform: `translate(${(mousePos.x - 0.5) * 8}px, ${(mousePos.y - 0.5) * 8}px)`,
+          padding: 0,
+          border: 'none',
+          background: 'transparent',
+          cursor: 'pointer'
         }}
       >
-        <img src="/assets/omega/omega-transparent.png" alt="Ω" />
+        <Live2DModel
+          modelPath="/test-moc/桌面状态.model3.json"
+          scale={0.5} // 根据你的模型大小调整这个值
+          emotion={state.emotion}
+          mousePos={mousePos}
+          onClick={() => setMenu(menu ? null : "root")}
+        />
       </button>
 
       <p className="status-line">
