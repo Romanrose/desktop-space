@@ -7,7 +7,8 @@ const omegaApi = {
     showFloating: () => ipcRenderer.invoke("window:showFloating"),
     setFloatingPosition: (x: number, y: number) =>
       ipcRenderer.invoke("window:setFloatingPosition", { x, y }),
-    quit: () => ipcRenderer.invoke("window:quit")
+    quit: () => ipcRenderer.invoke("window:quit"),
+    hideFloating: () => ipcRenderer.invoke("window:hideFloating")
   },
   state: {
     getOmegaState: () => ipcRenderer.invoke("state:getOmegaState"),
@@ -23,6 +24,10 @@ const omegaApi = {
   ai: {
     sendMessage: (payload: { text: string; includeScreenshot: boolean }) =>
       ipcRenderer.invoke("ai:sendMessage", payload)
+  },
+  onShowContextMenu: (callback: () => void) => {
+    ipcRenderer.on("show-context-menu", () => callback());
+    return () => { ipcRenderer.removeAllListeners("show-context-menu"); };
   }
 };
 

@@ -11,8 +11,15 @@ const defaultState: OmegaState = {
     activeGreeting: false,
     cleanCapsule: false,
     game: false,
-    writing: false
-  }
+    writing: false,
+    bookshelf: false,
+    construction: false
+  },
+  sessionStartTime: Date.now(),
+  lastActiveTime: Date.now(),
+  totalFocusTime: 0,
+  pendingStoryComplete: false,
+  capsuleBackgroundDirty: true
 };
 
 const stateKey = "omega.browser.state";
@@ -116,7 +123,7 @@ function inferReply(text: string, state: OmegaState): OmegaAIResponse {
   };
 }
 
-async function cloudReply(text: string, state: OmegaState): Promise<OmegaAIResponse | null> {
+async function cloudReply(text: string, state: OmegaState): Promise<(OmegaAIResponse & { state: OmegaState }) | null> {
   if (forceMockAI()) return null;
   try {
     const response = await fetch("/api/ai", {
@@ -188,7 +195,7 @@ export function installBrowserBridge() {
         const createdAt = new Date().toISOString();
         sessionLog.push({ speaker: "player", text, createdAt });
         const state = loadState();
-        const response = (await cloudReply(text, state)) ?? inferReply(text, state);
+        const response = (await cloudReply(text, state)) ?? inferReply(text, state) as OmegaAIResponse & { state: OmegaState };
         saveState(response.state);
         if (response.memorySummary) {
           const memories = loadMemories();

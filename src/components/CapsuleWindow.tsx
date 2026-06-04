@@ -22,8 +22,9 @@ export function CapsuleWindow({ state, updateState }: Props) {
     await updateState({
       prologueDone: true,
       currentMode: "idle",
-      mood: Math.max(20, state.mood + 1),
-      emotion: "calm_positive"
+      mood: Math.max(30, state.mood + 1),
+      emotion: "calm_positive",
+      lastActiveTime: Date.now()
     });
     await window.omega.window.showFloating();
     await window.omega.window.closeCapsule();

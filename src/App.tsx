@@ -6,7 +6,7 @@ import type { OmegaState } from "./types";
 const fallbackState: OmegaState = {
   nickname: "",
   prologueDone: false,
-  mood: 20,
+  mood: 30,
   affinity: 0,
   emotion: "calm_negative",
   currentMode: "prologue",
@@ -14,8 +14,15 @@ const fallbackState: OmegaState = {
     activeGreeting: false,
     cleanCapsule: false,
     game: false,
-    writing: false
-  }
+    writing: false,
+    bookshelf: false,
+    construction: false
+  },
+  sessionStartTime: Date.now(),
+  lastActiveTime: Date.now(),
+  totalFocusTime: 0,
+  pendingStoryComplete: false,
+  capsuleBackgroundDirty: true
 };
 
 export function App() {

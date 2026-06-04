@@ -1,12 +1,17 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ω Desktop Pet</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" /> <!-- 新增：适配移动端 -->
+  <title>Live2D</title>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- 1. 只加载一次 Cubism 4 核心（放在 React 应用前面） -->
+  <script src="/live2dcubismcore.min.js"></script>
+
+  <!-- 2. 再加载你的 React 应用 -->
+  <script type="module" src="/src/main.tsx"></script>
+</body>
 </html>
