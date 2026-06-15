@@ -11,22 +11,32 @@ type Props = {
 
 export default function Live2DModel({ scale = 1, onClick }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [tip, setTip] = useState('等待 Cubism SDK 加载...');
+  const [tip, setTip] = useState('加载角色...');
+  const [useFallback, setUseFallback] = useState(false);
 
   const MODEL_MOC3 = '/live2d/omega/omega.moc3';
   const MODEL_TEXTURE = '/live2d/omega/desktop.1024/texture_00.png';
+  const FALLBACK_IMAGE = '/live2d/omega-transparent.png';
 
   useEffect(() => {
     let animationId: number;
+    let sdkTimeout: number;
 
     // 先等 SDK 加载好
     const checkSDK = setInterval(() => {
       if ((window as any).CubismSDK) {
         clearInterval(checkSDK);
+        clearTimeout(sdkTimeout);
         setTip('SDK 已加载，准备初始化...');
         run();
       }
     }, 100);
+
+    sdkTimeout = window.setTimeout(() => {
+      clearInterval(checkSDK);
+      setUseFallback(true);
+      setTip('');
+    }, 1200);
 
     const run = async () => {
       const canvas = canvasRef.current;
@@ -123,6 +133,7 @@ export default function Live2DModel({ scale = 1, onClick }: Props) {
 
     return () => {
       clearInterval(checkSDK);
+      clearTimeout(sdkTimeout);
       cancelAnimationFrame(animationId);
     };
   }, []);
@@ -130,28 +141,46 @@ export default function Live2DModel({ scale = 1, onClick }: Props) {
   return (
     <div
       onClick={onClick}
-      style={{ width: '100%', height: '100%', position: 'relative', transform: `scale(${scale})` }}
+      style={{ width: '100%', height: '100%', position: 'relative' }}
     >
+      {useFallback && (
+        <img
+          src={FALLBACK_IMAGE}
+          alt=""
+          draggable={false}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 24px 22px rgba(93, 64, 55, 0.22))'
+          }}
+        />
+      )}
       <canvas
         ref={canvasRef}
         style={{
           width: '100%',
           height: '100%',
           background: 'transparent',
+          display: useFallback ? 'none' : 'block',
+          transform: `scale(${scale})`,
         }}
       />
-      <div style={{
-        position: 'absolute',
-        bottom: 8,
-        left: 8,
-        color: '#fff',
-        fontSize: 12,
-        background: 'rgba(0,0,0,0.5)',
-        padding: '4px 8px',
-        borderRadius: 4,
-      }}>
-        {tip}
-      </div>
+      {tip && (
+        <div style={{
+          position: 'absolute',
+          bottom: 8,
+          left: 8,
+          color: '#fff',
+          fontSize: 12,
+          background: 'rgba(0,0,0,0.5)',
+          padding: '4px 8px',
+          borderRadius: 4,
+        }}>
+          {tip}
+        </div>
+      )}
     </div>
   );
 }
