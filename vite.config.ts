@@ -1,27 +1,10 @@
+// NOTE: keep type definitions in sync with src/types.ts
+import type { OmegaEmotion, FeatureIntent, OmegaAIResponse } from "./src/types";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
-
-type OmegaEmotion =
-  | "calm_positive"
-  | "calm_negative"
-  | "happy"
-  | "shy"
-  | "sad"
-  | "proud";
-
-type FeatureIntent = "alarm" | "focus" | "capsule" | "game" | null;
-
-type OmegaAIResponse = {
-  reply: string;
-  emotion: OmegaEmotion;
-  moodDelta: number;
-  affinityDelta: number;
-  memorySummary?: string;
-  featureIntent?: FeatureIntent;
-};
 
 function loadLocalEnv() {
   for (const fileName of [".env.local", ".env"]) {
@@ -59,7 +42,7 @@ function readJsonBody(request: IncomingMessage) {
 }
 
 function inferFeatureIntent(text: string): FeatureIntent {
-  if (/太空舱|房间|舱/.test(text)) return "capsule";
+  if (/太空舱|舱/.test(text)) return "capsule";
   if (/专注|学习|工作/.test(text)) return "focus";
   if (/闹钟|提醒|叫我|计时/.test(text)) return "alarm";
   if (/游戏|原神|每日|体力/.test(text)) return "game";
@@ -82,7 +65,7 @@ function parseJsonResponse(raw: string): Partial<OmegaAIResponse> | null {
 
 function normalizeAIResponse(response: Partial<OmegaAIResponse> | null, fallbackText: string): OmegaAIResponse | null {
   if (!response?.reply) return null;
-  const allowedEmotions: OmegaEmotion[] = ["calm_positive", "calm_negative", "happy", "shy", "sad", "proud"];
+  const allowedEmotions: OmegaEmotion[] = ["calm_positive", "calm_negative", "happy", "shy", "sad", "proud", "excited", "fearful"];
   const allowedIntent: FeatureIntent[] = ["alarm", "focus", "capsule", "game", null];
   const emotion = allowedEmotions.includes(response.emotion as OmegaEmotion)
     ? (response.emotion as OmegaEmotion)
@@ -135,7 +118,7 @@ async function handleAiRequest(request: IncomingMessage, response: ServerRespons
           {
             role: "system",
             content:
-              "你是桌宠游戏角色Ω。用中文、简短、内向但温柔的语气回应玩家。不要总是重复同一句话，要根据玩家输入和记忆变化措辞。必须只返回JSON，不要Markdown。字段为 reply, emotion, moodDelta, affinityDelta, memorySummary, featureIntent。emotion只能是 calm_positive, calm_negative, happy, shy, sad, proud。featureIntent只能是 alarm, focus, capsule, game, null。"
+              "你是桌面宠游戏角色惟。用中文、简短、内向但温柔的语气回应玩家。不要总是重复同一句话，要根据玩家输入和记忆变化措辞。必须只返回JSON，不要Markdown。字段为 reply, emotion, moodDelta, affinityDelta, memorySummary, featureIntent。emotion只能是 calm_positive, calm_negative, happy, shy, sad, proud, excited, fearful。featureIntent只能是 alarm, focus, capsule, game, null。"
           },
           {
             role: "user",
