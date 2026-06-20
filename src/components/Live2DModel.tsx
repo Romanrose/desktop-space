@@ -1,186 +1,61 @@
-import { useEffect, useRef, useState } from 'react';
 import type { OmegaEmotion } from "../types";
 
-type Props = {
+interface Live2DModelProps {
   modelPath?: string;
   scale?: number;
   emotion?: OmegaEmotion;
   mousePos?: { x: number; y: number };
   onClick?: () => void;
+}
+
+const emotionFilters: Partial<Record<OmegaEmotion, string>> = {
+  happy: "drop-shadow(0 24px 22px rgba(93, 64, 55, 0.22)) saturate(1.08) brightness(1.04)",
+  excited: "drop-shadow(0 24px 22px rgba(93, 64, 55, 0.22)) saturate(1.12) brightness(1.06)",
+  sad: "drop-shadow(0 24px 22px rgba(93, 64, 55, 0.22)) saturate(0.88) brightness(0.94)",
+  fearful: "drop-shadow(0 24px 22px rgba(93, 64, 55, 0.22)) saturate(0.86) brightness(0.96)",
 };
 
-export default function Live2DModel({ scale = 1, onClick }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [tip, setTip] = useState('加载角色...');
-  const [useFallback, setUseFallback] = useState(false);
-
-  const MODEL_MOC3 = '/live2d/omega/omega.moc3';
-  const MODEL_TEXTURE = '/live2d/omega/desktop.1024/texture_00.png';
-  const FALLBACK_IMAGE = '/live2d/omega-transparent.png';
-
-  useEffect(() => {
-    let animationId: number;
-    let sdkTimeout: number;
-
-    // 先等 SDK 加载好
-    const checkSDK = setInterval(() => {
-      if ((window as any).CubismSDK) {
-        clearInterval(checkSDK);
-        clearTimeout(sdkTimeout);
-        setTip('SDK 已加载，准备初始化...');
-        run();
-      }
-    }, 100);
-
-    sdkTimeout = window.setTimeout(() => {
-      clearInterval(checkSDK);
-      setUseFallback(true);
-      setTip('');
-    }, 1200);
-
-    const run = async () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      const CubismSDK = (window as any).CubismSDK;
-      const gl = canvas.getContext('webgl', {
-        alpha: true,
-        antialias: true,
-        preserveDrawingBuffer: true,
-      });
-      if (!gl) {
-        setTip('❌ WebGL 初始化失败');
-        return;
-      }
-
-      // 透明背景
-      gl.clearColor(0, 0, 0, 0);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = 420 * dpr;
-      canvas.height = 620 * dpr;
-      gl.viewport(0, 0, canvas.width, canvas.height);
-
-      // 初始化 Cubism
-      setTip('初始化 Cubism...');
-      CubismSDK.start();
-      CubismSDK.initialize();
-
-      // 加载 moc3
-      setTip('加载 moc3 模型...');
-      const moc3Buffer = await fetch(MODEL_MOC3).then(res => res.arrayBuffer());
-      if (!moc3Buffer) {
-        setTip('❌ moc3 加载失败');
-        return;
-      }
-
-      // 创建模型
-      const model = CubismSDK.Model.create(moc3Buffer);
-      if (!model) {
-        setTip('❌ Cubism 模型创建失败');
-        return;
-      }
-
-      // 加载并绑定贴图
-      setTip('加载贴图...');
-      const texture = await loadTexture(gl, MODEL_TEXTURE);
-      if (!texture) {
-        setTip('❌ 贴图加载失败');
-        return;
-      }
-      model.setTexture(0, texture);
-
-      // 创建渲染器
-      const renderer = CubismSDK.Renderer.create(gl);
-
-      // 渲染循环（带呼吸效果）
-      setTip('🎉 角色渲染中！');
-      const startTime = Date.now();
-      const draw = () => {
-        const elapsedTime = (Date.now() - startTime) / 1000;
-        gl.clear(gl.COLOR_BUFFER_BIT);
-
-        // 简单呼吸
-        model.setParameterValueById('PARAM_BREATH', Math.sin(elapsedTime * 2) * 0.1);
-        model.update();
-        renderer.drawModel(model);
-
-        animationId = requestAnimationFrame(draw);
-      };
-      draw();
-    };
-
-    // 加载纹理
-    async function loadTexture(gl: WebGLRenderingContext, url: string) {
-      return new Promise<WebGLTexture | null>((resolve) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
-          const tex = gl.createTexture()!;
-          gl.bindTexture(gl.TEXTURE_2D, tex);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-          resolve(tex);
-        };
-        img.onerror = () => resolve(null);
-        img.src = url;
-      });
-    }
-
-    return () => {
-      clearInterval(checkSDK);
-      clearTimeout(sdkTimeout);
-      cancelAnimationFrame(animationId);
-    };
-  }, []);
+export default function Live2DModel({
+  scale = 1,
+  emotion = "calm_negative",
+  mousePos = { x: 0.5, y: 0.5 },
+  onClick,
+}: Live2DModelProps) {
+  const lookX = (mousePos.x - 0.5) * 10;
+  const lookY = (mousePos.y - 0.5) * 8;
+  const filter =
+    emotionFilters[emotion] ?? "drop-shadow(0 24px 22px rgba(93, 64, 55, 0.22))";
 
   return (
-    <div
+    <button
+      type="button"
+      className="live2d-fallback-button"
       onClick={onClick}
-      style={{ width: '100%', height: '100%', position: 'relative' }}
+      aria-label="Omega"
+      style={{
+        width: "100%",
+        height: "100%",
+        padding: 0,
+        border: 0,
+        background: "transparent",
+        cursor: "pointer",
+        overflow: "hidden",
+      }}
     >
-      {useFallback && (
-        <img
-          src={FALLBACK_IMAGE}
-          alt=""
-          draggable={false}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain',
-            pointerEvents: 'none',
-            filter: 'drop-shadow(0 24px 22px rgba(93, 64, 55, 0.22))'
-          }}
-        />
-      )}
-      <canvas
-        ref={canvasRef}
+      <img
+        src="/live2d/omega-transparent.png"
+        alt=""
+        draggable={false}
         style={{
-          width: '100%',
-          height: '100%',
-          background: 'transparent',
-          display: useFallback ? 'none' : 'block',
-          transform: `scale(${scale})`,
+          width: "100%",
+          height: "100%",
+          objectFit: "contain",
+          pointerEvents: "none",
+          filter,
+          transform: `translate(${lookX}px, ${lookY}px) scale(${scale})`,
+          transition: "transform 220ms ease, filter 220ms ease",
         }}
       />
-      {tip && (
-        <div style={{
-          position: 'absolute',
-          bottom: 8,
-          left: 8,
-          color: '#fff',
-          fontSize: 12,
-          background: 'rgba(0,0,0,0.5)',
-          padding: '4px 8px',
-          borderRadius: 4,
-        }}>
-          {tip}
-        </div>
-      )}
-    </div>
+    </button>
   );
 }

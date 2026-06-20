@@ -1,4 +1,4 @@
-import { app, BrowserWindow, desktopCapturer, ipcMain, Menu, nativeImage, Tray } from "electron";
+﻿import { app, BrowserWindow, desktopCapturer, ipcMain, Menu, nativeImage, Tray } from "electron";
 import { readFile, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -30,6 +30,14 @@ type OmegaAIResponse = {
   featureIntent?: FeatureIntent;
 };
 
+type OmegaStory = {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: number;
+  favorite: boolean;
+};
+
 type OmegaState = {
   nickname: string;
   prologueDone: boolean;
@@ -45,12 +53,24 @@ type OmegaState = {
     writing: boolean;
     bookshelf: boolean;
     construction: boolean;
+            gardening: boolean;
   };
   sessionStartTime: number;
   lastActiveTime: number;
   totalFocusTime: number;
   pendingStoryComplete: boolean;
   capsuleBackgroundDirty: boolean;
+  currentIdleAction: string;
+  idleActionStart: number;
+  idleActionDuration: number;
+  completedMilestones: string[];
+  lastGreetingTime: number;
+  pendingMilestoneEvent: string | null;
+  purchasedItems: string[];
+  capsuleDecoration: Record<string, string>;
+  equippedDecorations: Record<string, string>;
+  room2Unlocked: boolean;
+  stories: OmegaStory[];
 };
 
 type PersistedData = {
@@ -81,13 +101,25 @@ const defaultState: OmegaState = {
     game: false,
     writing: false,
     bookshelf: false,
-    construction: false
+    construction: false,
+    gardening: false
   },
   sessionStartTime: Date.now(),
   lastActiveTime: Date.now(),
   totalFocusTime: 0,
   pendingStoryComplete: false,
-  capsuleBackgroundDirty: true
+  capsuleBackgroundDirty: true,
+  currentIdleAction: 'stare',
+  idleActionStart: Date.now(),
+  idleActionDuration: 120_000,
+  completedMilestones: [],
+  lastGreetingTime: 0,
+  pendingMilestoneEvent: null,
+  purchasedItems: [],
+  capsuleDecoration: {},
+  equippedDecorations: {},
+  room2Unlocked: false,
+  stories: [],
 };
 
 function loadLocalEnv() {

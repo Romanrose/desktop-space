@@ -5,7 +5,7 @@
 		"Textures": [
 			"desktop.1024/texture_00.png"
 		],
-		"Physics": "desktop.physics3.json",
+		"Physics": "omega.physics3.json",
 		"DisplayInfo": "desktop.cdi3.json"
 	},
 	"Groups": [

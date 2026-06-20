@@ -1,4 +1,4 @@
-import type { ChatLine, OmegaAIResponse, OmegaState } from "./types";
+﻿import type { ChatLine, OmegaAIResponse, OmegaState } from "./types";
 
 const defaultState: OmegaState = {
   nickname: "",
@@ -13,13 +13,26 @@ const defaultState: OmegaState = {
     game: false,
     writing: false,
     bookshelf: false,
-    construction: false
+    construction: false,
+    gardening: false
   },
+  purchasedItems: [],
+  capsuleDecoration: {},
+  equippedDecorations: {},
+  stories: [],
+  room2Unlocked: false,
+  room2Furniture: {},
   sessionStartTime: Date.now(),
   lastActiveTime: Date.now(),
   totalFocusTime: 0,
   pendingStoryComplete: false,
-  capsuleBackgroundDirty: true
+  capsuleBackgroundDirty: true,
+  currentIdleAction: "stare",
+  idleActionStart: Date.now(),
+  idleActionDuration: 120000,
+  completedMilestones: [],
+  lastGreetingTime: 0,
+  pendingMilestoneEvent: null,
 };
 
 const stateKey = "omega.browser.state";
@@ -123,7 +136,7 @@ function inferReply(text: string, state: OmegaState): OmegaAIResponse {
   };
 }
 
-async function cloudReply(text: string, state: OmegaState): Promise<(OmegaAIResponse & { state: OmegaState }) | null> {
+async function cloudReply(text: string, state: OmegaState): Promise<OmegaAIResponse | null> {
   if (forceMockAI()) return null;
   try {
     const response = await fetch("/api/ai", {
@@ -163,6 +176,7 @@ export function installBrowserBridge() {
       openCapsule: async () => routeTo("capsule"),
       closeCapsule: async () => routeTo("floating"),
       showFloating: async () => routeTo("floating"),
+      hideFloating: async () => undefined,
       setFloatingPosition: async () => undefined,
       quit: async () => undefined
     },
@@ -195,15 +209,15 @@ export function installBrowserBridge() {
         const createdAt = new Date().toISOString();
         sessionLog.push({ speaker: "player", text, createdAt });
         const state = loadState();
-        const response = (await cloudReply(text, state)) ?? inferReply(text, state) as OmegaAIResponse & { state: OmegaState };
-        saveState(response.state);
+        const response = (await cloudReply(text, state)) ?? inferReply(text, state);
+      if (response.state) saveState(response.state);
         if (response.memorySummary) {
           const memories = loadMemories();
           memories.push(response.memorySummary);
           saveMemories(memories);
         }
         sessionLog.push({ speaker: "omega", text: response.reply, createdAt: new Date().toISOString() });
-        return response;
+      return response as OmegaAIResponse & { state: OmegaState };
       }
     }
   };
