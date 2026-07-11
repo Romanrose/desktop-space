@@ -20,6 +20,10 @@ export function CapsuleWindow({ state, updateState }: Props) {
   const [decorating, setDecorating] = useState(false);
   const [inRoom2, setInRoom2] = useState(false);
   const [bookshelfShow, setBookshelfShow] = useState(false);
+  const [agentMove, setAgentMove] = useState<{
+    requestId: string;
+    destination: "bed" | "bookshelf" | "door" | "center";
+  } | undefined>();
   const canDecorate = state.prologueDone && !sleeping;
   const cleanDialogue = state.completedMilestones.includes("m2_clean_capsule")
     ? null
@@ -67,6 +71,8 @@ export function CapsuleWindow({ state, updateState }: Props) {
       setCleanDialogueIndex(0);
     }
   }, [cleanDialogue, cleanDialogueIndex, state.completedMilestones]);
+
+  useEffect(() => window.omega.agent.onMove(setAgentMove), []);
 
   async function submitNickname(event: FormEvent) {
     event.preventDefault();
@@ -239,6 +245,11 @@ export function CapsuleWindow({ state, updateState }: Props) {
           room2Unlocked={state.room2Unlocked ?? false}
           onShelfInteract={() => setBookshelfShow(true)}
           onRoom2Door={() => { setInRoom2(true); }}
+          agentMove={agentMove}
+          onAgentMoveComplete={(command) => {
+            setAgentMove(undefined);
+            void window.omega.agent.moveComplete(command);
+          }}
         />
       )}
     </main>

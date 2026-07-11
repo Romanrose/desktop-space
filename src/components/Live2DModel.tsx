@@ -27,23 +27,20 @@ export default function Live2DModel({
     emotionFilters[emotion] ?? "drop-shadow(0 24px 22px rgba(93, 64, 55, 0.22))";
 
   return (
-    <button
-      type="button"
+    <div
       className="live2d-fallback-button"
+      aria-hidden="true"
       onClick={onClick}
-      aria-label="Omega"
       style={{
         width: "100%",
         height: "100%",
-        padding: 0,
-        border: 0,
         background: "transparent",
-        cursor: "pointer",
         overflow: "hidden",
+        pointerEvents: "none",
       }}
     >
       <img
-        src="/live2d/omega-transparent.png"
+        src="/live2d/omega.png"
         alt=""
         draggable={false}
         style={{
@@ -56,6 +53,6 @@ export default function Live2DModel({
           transition: "transform 220ms ease, filter 220ms ease",
         }}
       />
-    </button>
+    </div>
   );
 }

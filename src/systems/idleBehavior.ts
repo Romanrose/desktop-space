@@ -62,9 +62,9 @@ export function isIdleActionExpired(
   return now - state.idleActionStart >= state.idleActionDuration;
 }
 
-/** 检查低心境限制：心境 < 15 时大部分交互被阻止 */
+/** 检查低心境限制：达到最低心境值时大部分交互被阻止 */
 export function isLowMood(state: OmegaState): boolean {
-  return state.mood < 15;
+  return state.mood <= 15;
 }
 
 /** 根据亲密度数值返回档位 */

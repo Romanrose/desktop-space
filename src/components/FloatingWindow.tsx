@@ -76,6 +76,8 @@ export function FloatingWindow({ state, setState, updateState }: Props) {
   const [includeScreenshot, setIncludeScreenshot] = useState(false);
   const [busy, setBusy] = useState(false);
   const [sessionLog, setSessionLog] = useState<ChatLine[]>([]);
+  const [narrativeChoices, setNarrativeChoices] = useState<string[]>([]);
+  const [typingReply, setTypingReply] = useState<string | null>(null);
   const [moodFlash, setMoodFlash] = useState<string | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
   const [clickBubble, setClickBubble] = useState<string | null>(null);
@@ -86,11 +88,18 @@ export function FloatingWindow({ state, setState, updateState }: Props) {
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idleCycleRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const sleepIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastActiveRef = useRef(state.lastActiveTime);
   const stateRef = useRef(state);
   stateRef.current = state;
 
   const recentLines = useMemo(() => sessionLog.slice(-4), [sessionLog]);
+  const visibleRecentLines = useMemo(() => {
+    if (typingReply === null) return recentLines;
+    return recentLines.filter(
+      (line, index) => !(line.speaker === "omega" && index === recentLines.length - 1)
+    );
+  }, [recentLines, typingReply]);
 
   // 按亲密度档位计算的活力度（用于决定是否显示生气等）
   const affectionLevel = useMemo(() => getAffectionLevel(state.affinity), [state.affinity]);
@@ -289,6 +298,7 @@ export function FloatingWindow({ state, setState, updateState }: Props) {
   useEffect(() => {
     return () => {
       if (sleepIntervalRef.current) clearInterval(sleepIntervalRef.current);
+      if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
     };
   }, []);
 
@@ -319,14 +329,38 @@ export function FloatingWindow({ state, setState, updateState }: Props) {
   // ---------- 发送消息 ----------
   async function sendMessage(event: FormEvent) {
     event.preventDefault();
-    if (!input.trim() || busy) return;
-    const text = input.trim();
+    await sendNarrativeMessage(input, "free");
+  }
+
+  function revealReply(reply: string) {
+    const characters = Array.from(reply);
+    setTypingReply("");
+    return new Promise<void>((resolve) => {
+      let cursor = 0;
+      typingIntervalRef.current = setInterval(() => {
+        cursor += 1;
+        setTypingReply(characters.slice(0, cursor).join(""));
+        if (cursor >= characters.length) {
+          if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
+          typingIntervalRef.current = null;
+          setTypingReply(null);
+          resolve();
+        }
+      }, 22);
+    });
+  }
+
+  async function sendNarrativeMessage(rawText: string, inputMode: "free" | "choice") {
+    if (!rawText.trim() || busy) return;
+    const text = rawText.trim();
     setInput("");
     setBusy(true);
+    setNarrativeChoices([]);
     try {
       const response = (await window.omega.ai.sendMessage({
         text,
         includeScreenshot,
+        inputMode,
       })) as OmegaAIResponse;
       setState(response.state!);
       setMoodFlash(
@@ -334,6 +368,8 @@ export function FloatingWindow({ state, setState, updateState }: Props) {
       );
       setTimeout(() => setMoodFlash(null), 1100);
       await refreshLog();
+      await revealReply(response.reply);
+      setNarrativeChoices(response.choices ?? []);
       if (response.featureIntent === "capsule") {
         await window.omega.window.openCapsule();
       }
@@ -630,10 +666,10 @@ export function FloatingWindow({ state, setState, updateState }: Props) {
             ×
           </button>
           <div className="chat-stream" aria-live="polite">
-            {recentLines.length === 0 && (
+            {visibleRecentLines.length === 0 && typingReply === null && (
               <p className="empty-copy">Ω正在看着你这边的光。</p>
             )}
-            {recentLines.map((line) => (
+            {visibleRecentLines.map((line) => (
               <p
                 className={`chat-line chat-line--${line.speaker}`}
                 key={`${line.createdAt}-${line.text}`}
@@ -644,12 +680,29 @@ export function FloatingWindow({ state, setState, updateState }: Props) {
                 {line.text}
               </p>
             ))}
-            {busy && (
-              <p className="chat-line chat-line--omega">
-                <span>Ω</span>正在组织语言...
+            {typingReply !== null ? (
+              <p className="chat-line chat-line--omega chat-line--typing">
+                <span>Ω</span>{typingReply}
               </p>
+            ) : busy && (
+              <p className="chat-line chat-line--omega"><span>Ω</span>正在组织语言...</p>
             )}
           </div>
+          {narrativeChoices.length > 0 && !busy && (
+            <div className="narrative-choices" aria-label="对话选项">
+              {narrativeChoices.map((choice, index) => (
+                <button
+                  key={choice}
+                  className="narrative-choice"
+                  type="button"
+                  onClick={() => void sendNarrativeMessage(choice, "choice")}
+                >
+                  <span>{index + 1}</span>
+                  {choice}
+                </button>
+              ))}
+            </div>
+          )}
           <form className="chat-form" onSubmit={sendMessage}>
             <label className="screen-toggle">
               <input

@@ -36,7 +36,8 @@ export function calculatePassiveMoodGain(
   state: OmegaState,
   now: number = Date.now()
 ): { gain: number; message: string | null } {
-  const elapsedMs = now - (state.lastActiveTime ?? state.sessionStartTime ?? now);
+  const checkpoint = state.lastPassiveRewardTime ?? state.lastActiveTime ?? state.sessionStartTime ?? now;
+  const elapsedMs = Math.max(0, now - checkpoint);
   const elapsedHours = elapsedMs / 3600_000;
 
   // 至少 1 小时才有收益
@@ -64,11 +65,14 @@ export function applyPassiveMoodGain(
   now: number = Date.now()
 ): Partial<OmegaState> & { _message?: string | null } {
   const result = calculatePassiveMoodGain(state, now);
-  if (result.gain === 0) return { lastActiveTime: now, _message: null };
+  if (result.gain === 0) return { _message: null };
+
+  const checkpoint = state.lastPassiveRewardTime ?? state.lastActiveTime ?? state.sessionStartTime ?? now;
+  const settledHours = Math.floor(Math.max(0, now - checkpoint) / 3600_000);
 
   return {
     mood: Math.min(1000, (state.mood ?? 0) + result.gain),
-    lastActiveTime: now,
+    lastPassiveRewardTime: checkpoint + settledHours * 3600_000,
     _message: result.message,
   };
 }

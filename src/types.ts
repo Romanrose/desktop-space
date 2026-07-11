@@ -24,6 +24,15 @@ export type OmegaIdleAction =
 /** 浜插瘑搴︽。浣?*/
 export type AffectionLevel = "low" | "medium" | "high";
 
+export type OmegaMilestoneId =
+  | "m1_first_greeting"
+  | "m2_clean_capsule"
+  | "m3_show_world"
+  | "m4_childhood_story"
+  | "m5_construction"
+  | "m6_game_unlock"
+  | "m7_writing";
+
 export type OmegaStory = {
   id: string;
   title: string;
@@ -45,6 +54,7 @@ export type OmegaAIResponse = {
   emotion: OmegaEmotion;
   moodDelta: number;
   affinityDelta: number;
+  choices?: string[];
   memorySummary?: string;
   featureIntent?: FeatureIntent;
   state?: OmegaState;
@@ -82,6 +92,7 @@ export type OmegaState = {
   room2Furniture: Record<string, { x: number; y: number }>;
   sessionStartTime: number;
   lastActiveTime: number;
+  lastPassiveRewardTime?: number;
   totalFocusTime: number;
   pendingStoryComplete: boolean;
   capsuleBackgroundDirty: boolean;
@@ -126,7 +137,11 @@ declare global {
         getSummaries: () => Promise<string[]>;
       };
       ai: {
-        sendMessage: (payload: { text: string; includeScreenshot: boolean }) => Promise<OmegaAIResponse & { state: OmegaState }>;
+        sendMessage: (payload: { text: string; includeScreenshot: boolean; inputMode?: "free" | "choice" }) => Promise<OmegaAIResponse & { state: OmegaState }>;
+      };
+      agent: {
+        onMove: (callback: (command: { requestId: string; destination: "bed" | "bookshelf" | "door" | "center" }) => void) => () => void;
+        moveComplete: (command: { requestId: string; destination: "bed" | "bookshelf" | "door" | "center" }) => Promise<void>;
       };
     };
   }

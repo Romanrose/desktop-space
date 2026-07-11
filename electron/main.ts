@@ -2,6 +2,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { PiOmegaAgent } from "./piOmegaAgent";
 
 type OmegaEmotion =
   | "calm_positive"
@@ -26,6 +27,7 @@ type OmegaAIResponse = {
   emotion: OmegaEmotion;
   moodDelta: number;
   affinityDelta: number;
+  choices?: string[];
   memorySummary?: string;
   featureIntent?: FeatureIntent;
 };
@@ -87,6 +89,9 @@ let floatingWindow: InstanceType<typeof BrowserWindow> | null = null;
 let capsuleWindow: InstanceType<typeof BrowserWindow> | null = null;
 let tray: InstanceType<typeof Tray> | null = null;
 let persisted: PersistedData;
+type CapsuleDestination = "bed" | "bookshelf" | "door" | "center";
+const pendingAgentMoves = new Map<string, (completed: boolean) => void>();
+let piAgent: PiOmegaAgent | null = null;
 
 const defaultState: OmegaState = {
   nickname: "",
@@ -173,7 +178,7 @@ function createFloatingWindow() {
   }
 
   floatingWindow = new BrowserWindow({
-    width: 420,
+    width: 640,
     height: 620,
     x: persisted.state.floatingPosition?.x,
     y: persisted.state.floatingPosition?.y,
@@ -272,6 +277,26 @@ function inferFeatureIntent(text: string): FeatureIntent {
   return null;
 }
 
+function normalizeChoices(value: unknown): string[] {
+  const choices = Array.isArray(value) ? value : [];
+  const unique = new Set<string>();
+  for (const choice of choices) {
+    const text = String(choice ?? "").replace(/\s+/g, " ").trim().slice(0, 30);
+    if (text) unique.add(text);
+    if (unique.size === 4) break;
+  }
+  return [...unique];
+}
+
+function fallbackNarrativeChoices(text: string, intent: FeatureIntent): string[] {
+  if (intent === "capsule") return ["陪Ω回太空舱看看", "问问她想先整理哪里", "先留在这里继续聊天"];
+  if (intent === "focus") return ["请Ω安静陪我一会儿", "问问她想在旁边做什么", "说说我今天的计划"];
+  if (/难过|累|烦|孤独|讨厌|哭|sad|tired/i.test(text)) {
+    return ["告诉Ω我愿意继续听", "问问她最近在担心什么", "安静地陪她一会儿"];
+  }
+  return ["问问Ω现在在想什么", "聊聊太空舱最近的变化", "告诉Ω我今天发生的事"];
+}
+
 function localOmegaResponse(text: string, includeScreenshot: boolean): OmegaAIResponse {
   const lowered = text.toLowerCase();
   const sad = /难过|累|烦|孤独|讨厌|哭|sad|tired/.test(lowered);
@@ -344,9 +369,45 @@ function normalizeAIResponse(response: Partial<OmegaAIResponse> | null, fallback
     affinityDelta: Number.isFinite(response.affinityDelta)
       ? Math.max(-5, Math.min(5, Math.round(response.affinityDelta ?? 0)))
       : 0,
+    choices: (() => {
+      const choices = normalizeChoices(response.choices);
+      return choices.length >= 2 ? choices : fallbackNarrativeChoices(fallbackText, featureIntent);
+    })(),
     memorySummary: response.memorySummary ? String(response.memorySummary).slice(0, 220) : undefined,
     featureIntent
   };
+}
+
+async function moveOmegaWithAgent(destination: CapsuleDestination): Promise<boolean> {
+  const window = createCapsuleWindow();
+  if (window.webContents.isLoading()) {
+    await new Promise<void>((resolve) => window.webContents.once("did-finish-load", () => resolve()));
+  }
+  const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const completed = new Promise<boolean>((resolve) => {
+    pendingAgentMoves.set(requestId, resolve);
+    setTimeout(() => {
+      const pending = pendingAgentMoves.get(requestId);
+      if (pending) {
+        pendingAgentMoves.delete(requestId);
+        pending(false);
+      }
+    }, 12_000);
+  });
+  window.webContents.send("agent:moveOmega", { requestId, destination });
+  return completed;
+}
+
+function getPiAgent() {
+  if (!piAgent) {
+    piAgent = new PiOmegaAgent(
+      () => {
+        createCapsuleWindow();
+      },
+      moveOmegaWithAgent
+    );
+  }
+  return piAgent;
 }
 
 async function cloudOmegaResponse(text: string, screenshot?: string): Promise<OmegaAIResponse | null> {
@@ -467,11 +528,33 @@ ipcMain.handle("memory:saveSummary", async (_event, summary: string) => {
 
 ipcMain.handle("memory:getSummaries", () => persisted.memories);
 
-ipcMain.handle("ai:sendMessage", async (_event, payload: { text: string; includeScreenshot: boolean }) => {
+ipcMain.handle("agent:moveComplete", (_event, command: { requestId: string; destination: CapsuleDestination }) => {
+  const resolve = pendingAgentMoves.get(command.requestId);
+  if (resolve) {
+    pendingAgentMoves.delete(command.requestId);
+    resolve(true);
+  }
+});
+
+ipcMain.handle("ai:sendMessage", async (_event, payload: { text: string; includeScreenshot: boolean; inputMode?: "free" | "choice" }) => {
   const createdAt = new Date().toISOString();
   sessionLog.push({ speaker: "player", text: payload.text, createdAt });
   const screenshot = payload.includeScreenshot ? await capturePrimaryScreen().catch(() => undefined) : undefined;
-  const aiResponse = (await cloudOmegaResponse(payload.text, screenshot)) ?? localOmegaResponse(payload.text, Boolean(screenshot));
+  const apiKey = process.env.MIMO_API_KEY ?? process.env.OPENAI_API_KEY;
+  const baseUrl = (process.env.MIMO_BASE_URL ?? process.env.OPENAI_BASE_URL ?? "https://api.xiaomimimo.com/v1").replace(/\/$/, "");
+  const modelId = process.env.MIMO_MODEL ?? process.env.OPENAI_MODEL ?? "mimo-v2-flash";
+  const piRaw = apiKey
+    ? await getPiAgent().prompt({
+        text: payload.text,
+        inputMode: payload.inputMode === "choice" ? "choice" : "free",
+        state: persisted.state,
+        memories: persisted.memories,
+        screenshot,
+      }, { apiKey, baseUrl, modelId })
+    : null;
+  const aiResponse = (piRaw ? normalizeAIResponse(parseJsonResponse(piRaw), payload.text) : null)
+    ?? (await cloudOmegaResponse(payload.text, screenshot))
+    ?? localOmegaResponse(payload.text, Boolean(screenshot));
   const nextMood = clampMood(persisted.state.mood + aiResponse.moodDelta);
   const nextAffinity = Math.max(0, persisted.state.affinity + aiResponse.affinityDelta);
   persisted.state = {
