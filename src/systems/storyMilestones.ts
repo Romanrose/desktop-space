@@ -5,7 +5,7 @@
  * 由 FloatingWindow/CapsuleWindow 在适当时机调用 checkMilestones。
  */
 
-import type { OmegaState } from "../types";
+import type { OmegaMilestoneId, OmegaState } from "../types";
 
 /** 所有可用里程碑 ID 列表 */
 export const ALL_MILESTONES = [
@@ -16,9 +16,9 @@ export const ALL_MILESTONES = [
   "m5_construction",
   "m6_game_unlock",
   "m7_writing",
-] as const;
+] as const satisfies readonly OmegaMilestoneId[];
 
-export type MilestoneId = (typeof ALL_MILESTONES)[number];
+export type MilestoneId = OmegaMilestoneId;
 
 /* ---------- 打招呼内容池 ---------- */
 
@@ -114,6 +114,13 @@ export function checkMilestones(state: OmegaState): MilestoneCheck {
     };
   }
 
+  if (!completed.has("m6_game_unlock") && unlocked.game) {
+    return {
+      triggered: "m6_game_unlock",
+      bubbleText: "游戏机已经能正常运行了……要一起试试吗？",
+    };
+  }
+
   if (!completed.has("m7_writing") && mood > 500 && affinity > 50) {
     return {
       triggered: "m7_writing",
@@ -150,6 +157,10 @@ export function applyMilestoneReward(
     case "m2_clean_capsule":
       partial.capsuleBackgroundDirty = false;
       partial.emotion = "proud";
+      partial.unlocked = {
+        ...currentState.unlocked,
+        cleanCapsule: true,
+      };
       break;
     case "m3_show_world":
       partial.mood = Math.min(1000, (currentState.mood ?? 0) + 10);
@@ -163,6 +174,10 @@ export function applyMilestoneReward(
       break;
     case "m5_construction":
       partial.mood = Math.min(1000, (currentState.mood ?? 0) + 10);
+      partial.emotion = "proud";
+      break;
+    case "m6_game_unlock":
+      partial.affinity = (currentState.affinity ?? 0) + 2;
       partial.emotion = "proud";
       break;
     case "m7_writing":

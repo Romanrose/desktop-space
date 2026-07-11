@@ -1,4 +1,4 @@
-import { Application, Assets, Container, Graphics, Sprite, Text, Texture, Ticker } from "pixi.js";
+import { Application, BaseTexture, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 import { useEffect, useRef, useState } from "react";
 import type { OmegaEmotion } from "../types";
 
@@ -14,9 +14,36 @@ type Props = {
   mood: number;
   equippedDecorations?: Record<string, string>;
   capsuleBackgroundDirty?: boolean;
+  agentMove?: {
+    requestId: string;
+    destination: "bed" | "bookshelf" | "door" | "center";
+  };
+  onAgentMoveComplete?: (command: {
+    requestId: string;
+    destination: "bed" | "bookshelf" | "door" | "center";
+  }) => void;
 };
 
 type Position = { x: number; y: number };
+
+type AgentMoveCommand = NonNullable<Props["agentMove"]>;
+
+function destinationPosition(
+  destination: AgentMoveCommand["destination"],
+  width: number,
+  height: number
+): Position {
+  switch (destination) {
+    case "bed":
+      return { x: width - 160, y: height * 0.6 };
+    case "bookshelf":
+      return { x: 120, y: height * 0.42 };
+    case "door":
+      return { x: 60, y: height * 0.72 };
+    case "center":
+      return { x: width * 0.5, y: height * 0.56 };
+  }
+}
 
 export function CapsuleScene({
   prologueDone,
@@ -30,12 +57,16 @@ export function CapsuleScene({
   mood,
   equippedDecorations = {},
   capsuleBackgroundDirty = true,
+  agentMove,
+  onAgentMoveComplete,
 }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const appRef = useRef<Application | null>(null);
   const playerRef = useRef<Container | null>(null);
   const positionRef = useRef<Position>({ x: 512, y: 444 });
   const keysRef = useRef(new Set<string>());
+  const agentMoveRef = useRef<AgentMoveCommand | null>(null);
+  const onAgentMoveCompleteRef = useRef(onAgentMoveComplete);
   const [nearDesk, setNearDesk] = useState(false);
   const [nearBed, setNearBed] = useState(false);
   const [nearShelf, setNearShelf] = useState(false);
@@ -44,6 +75,14 @@ export function CapsuleScene({
   const bedArrowRef = useRef<Text | null>(null);
   const shelfArrowRef = useRef<Text | null>(null);
   const doorArrowRef = useRef<Text | null>(null);
+
+  useEffect(() => {
+    agentMoveRef.current = agentMove ?? null;
+  }, [agentMove]);
+
+  useEffect(() => {
+    onAgentMoveCompleteRef.current = onAgentMoveComplete;
+  }, [onAgentMoveComplete]);
 
   useEffect(() => {
     let disposed = false;
@@ -62,13 +101,11 @@ export function CapsuleScene({
     window.addEventListener("keyup", keyUp);
 
     async function init() {
-      const app = new Application();
-      await app.init({
+      const app = new Application({
         width: hostElement.clientWidth,
         height: hostElement.clientHeight,
-        backgroundAlpha: 0,
+        transparent: true,
         antialias: true,
-        resizeTo: hostElement,
       });
 
       if (disposed) {
@@ -77,7 +114,7 @@ export function CapsuleScene({
       }
 
       appRef.current = app;
-      hostElement.appendChild(app.canvas);
+      hostElement.appendChild(app.view as unknown as Node);
 
       // --- Background image layer ---
       try {
@@ -113,7 +150,7 @@ export function CapsuleScene({
       try {
         omegaTexture = await loadImageAsTexture(
           app.renderer as unknown as import("pixi.js").Renderer,
-          "/live2d/omega-transparent.png"
+          "/live2d/omega.png"
         );
       } catch (err) {
         console.warn("Omega image load failed, using fallback draw", err);
@@ -176,13 +213,29 @@ export function CapsuleScene({
       window.addEventListener("resize", handleResize);
 
       // --- Tick loop ---
-      app.ticker.add((ticker: Ticker) => {
-        const speed = 3.1 * ticker.deltaTime;
+      app.ticker.add((delta) => {
+        const speed = 3.1 * delta;
         const pos = positionRef.current;
-        if (keysRef.current.has("w")) pos.y -= speed;
-        if (keysRef.current.has("s")) pos.y += speed;
-        if (keysRef.current.has("a")) pos.x -= speed;
-        if (keysRef.current.has("d")) pos.x += speed;
+        const activeAgentMove = agentMoveRef.current;
+        if (activeAgentMove) {
+          const target = destinationPosition(activeAgentMove.destination, app.screen.width, app.screen.height);
+          const distance = Math.hypot(target.x - pos.x, target.y - pos.y);
+          const agentSpeed = 4.8 * delta;
+          if (distance <= agentSpeed) {
+            pos.x = target.x;
+            pos.y = target.y;
+            agentMoveRef.current = null;
+            onAgentMoveCompleteRef.current?.(activeAgentMove);
+          } else {
+            pos.x += ((target.x - pos.x) / distance) * agentSpeed;
+            pos.y += ((target.y - pos.y) / distance) * agentSpeed;
+          }
+        } else {
+          if (keysRef.current.has("w")) pos.y -= speed;
+          if (keysRef.current.has("s")) pos.y += speed;
+          if (keysRef.current.has("a")) pos.x -= speed;
+          if (keysRef.current.has("d")) pos.x += speed;
+        }
         pos.x = Math.max(150, Math.min(app.screen.width - 150, pos.x));
         pos.y = Math.max(300, Math.min(app.screen.height - 120, pos.y));
         player.position.set(pos.x, pos.y);
@@ -270,7 +323,16 @@ function loadImageAsTexture(
   _renderer: import("pixi.js").Renderer,
   url: string
 ): Promise<Texture> {
-  return Assets.load<Texture>(url);
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const base = new BaseTexture(img);
+      resolve(new Texture(base));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
 }
 
 /** Draw subtle decoration overlays based on equipped items. */

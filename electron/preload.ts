@@ -22,8 +22,17 @@ const omegaApi = {
     getSummaries: () => ipcRenderer.invoke("memory:getSummaries")
   },
   ai: {
-    sendMessage: (payload: { text: string; includeScreenshot: boolean }) =>
+    sendMessage: (payload: { text: string; includeScreenshot: boolean; inputMode?: "free" | "choice" }) =>
       ipcRenderer.invoke("ai:sendMessage", payload)
+  },
+  agent: {
+    onMove: (callback: (command: { requestId: string; destination: "bed" | "bookshelf" | "door" | "center" }) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, command: { requestId: string; destination: "bed" | "bookshelf" | "door" | "center" }) => callback(command);
+      ipcRenderer.on("agent:moveOmega", listener);
+      return () => ipcRenderer.removeListener("agent:moveOmega", listener);
+    },
+    moveComplete: (command: { requestId: string; destination: "bed" | "bookshelf" | "door" | "center" }) =>
+      ipcRenderer.invoke("agent:moveComplete", command)
   },
   onShowContextMenu: (callback: () => void) => {
     ipcRenderer.on("show-context-menu", () => callback());

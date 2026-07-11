@@ -84,6 +84,15 @@ function routeTo(view: "floating" | "capsule") {
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
+function fallbackNarrativeChoices(text: string, featureIntent: OmegaAIResponse["featureIntent"]): string[] {
+  if (featureIntent === "capsule") return ["陪Ω回太空舱看看", "问问她想先整理哪里", "先留在这里继续聊天"];
+  if (featureIntent === "focus") return ["请Ω安静陪我一会儿", "问问她想在旁边做什么", "说说我今天的计划"];
+  if (/难过|累|烦|孤独|讨厌|哭|sad|tired/i.test(text)) {
+    return ["告诉Ω我愿意继续听", "问问她最近在担心什么", "安静地陪她一会儿"];
+  }
+  return ["问问Ω现在在想什么", "聊聊太空舱最近的变化", "告诉Ω我今天发生的事"];
+}
+
 function inferReply(text: string, state: OmegaState): OmegaAIResponse {
   const featureIntent = /太空舱|房间|舱/.test(text)
     ? "capsule"
@@ -129,6 +138,7 @@ function inferReply(text: string, state: OmegaState): OmegaAIResponse {
     emotion,
     moodDelta,
     affinityDelta,
+    choices: fallbackNarrativeChoices(text, featureIntent),
     memorySummary: text.length > 8 ? `玩家提到：${text.slice(0, 80)}` : undefined,
     featureIntent,
     state: nextState,
@@ -205,7 +215,7 @@ export function installBrowserBridge() {
       getSummaries: async () => loadMemories()
     },
     ai: {
-      sendMessage: async ({ text }: { text: string; includeScreenshot: boolean }) => {
+      sendMessage: async ({ text }: { text: string; includeScreenshot: boolean; inputMode?: "free" | "choice" }) => {
         const createdAt = new Date().toISOString();
         sessionLog.push({ speaker: "player", text, createdAt });
         const state = loadState();
@@ -219,6 +229,10 @@ export function installBrowserBridge() {
         sessionLog.push({ speaker: "omega", text: response.reply, createdAt: new Date().toISOString() });
       return response as OmegaAIResponse & { state: OmegaState };
       }
+    },
+    agent: {
+      onMove: () => () => undefined,
+      moveComplete: async () => undefined
     }
   };
 }

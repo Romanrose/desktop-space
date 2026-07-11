@@ -5,7 +5,7 @@
  * 数据来自 合成机.xls。
  */
 
-import type { OmegaState } from "../types";
+import type { OmegaMilestoneId, OmegaState } from "../types";
 
 /** 物品类别 */
 export type CraftCategory =
@@ -48,7 +48,7 @@ export type CraftRecipe = {
 
 /* ---------- 合成机解锁检查辅助 ---------- */
 
-function hasMilestone(state: OmegaState, m: string): boolean {
+function hasMilestone(state: OmegaState, m: OmegaMilestoneId): boolean {
   return (state.completedMilestones ?? []).includes(m);
 }
 
@@ -70,7 +70,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
     flavor: "（等美工设计）",
     unlockCondition: "完成清洁太空舱任务",
     isUnlocked: (s) => hasMilestone(s, "m2_clean_capsule"),
-    apply: () => ({ capsuleDecoration: { wallpaper: "style1" } }),
+    apply: () => ({}),
   },
   {
     id: "capsule_floor_1",
@@ -82,7 +82,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
     flavor: "（等美工设计）",
     unlockCondition: "完成清洁太空舱任务",
     isUnlocked: (s) => hasMilestone(s, "m2_clean_capsule"),
-    apply: () => ({ capsuleDecoration: { floor: "style1" } }),
+    apply: () => ({}),
   },
   {
     id: "capsule_shelf_1",

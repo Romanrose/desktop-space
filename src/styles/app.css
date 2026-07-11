@@ -83,7 +83,7 @@ input:focus-visible {
 /* ---------- Mood meter ---------- */
 .omega-avatar {
   position: absolute;
-  left: 50%;
+  left: calc(100% - 120px);
   bottom: 56px;
   width: 280px;
   height: 440px;
@@ -231,17 +231,14 @@ input:focus-visible {
 
 /* ---------- 瀵硅瘽姘旀场锛堣亰澶╅潰鏉匡級 ---------- */
 .dialogue-bubble {
-    position: absolute;
-    left: 24px;
-    right: calc(50% + 150px);
-    top: 118px;
-    display: grid;
-    width: auto;
-    min-width: 220px;
-    max-width: min(330px, calc(50vw - 42px));
-    gap: 10px;
-    transform: translateX(-4px);
-  }
+  position: absolute;
+  bottom: 52px;
+  left: 20px;
+  display: grid;
+  width: min(360px, calc(100vw - 330px));
+  min-width: 280px;
+  gap: 10px;
+}
 
 .dialogue-close {
   position: absolute;
@@ -260,25 +257,14 @@ input:focus-visible {
 }
 
 .dialogue-bubble::before {
-  position: absolute;
-  left: 20px;
-  bottom: -13px;
-  width: 28px;
-  height: 28px;
-  background: rgba(255, 250, 240, 0.84);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.66);
-  border-left: 1px solid rgba(255, 255, 255, 0.66);
-  box-shadow: -5px 6px 14px rgba(33, 28, 24, 0.08);
-  content: "";
-  transform: rotate(-34deg) skew(-8deg);
-  transform-origin: center;
+  display: none;
 }
 
 .dialogue-bubble .chat-stream {
   position: relative;
   z-index: 1;
   min-height: 106px;
-  max-height: 210px;
+  max-height: 230px;
   padding: 16px;
   border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: 24px 24px 24px 10px;
@@ -292,6 +278,48 @@ input:focus-visible {
 
 .chat-panel {
   min-height: 0;
+}
+
+.narrative-choices {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 6px;
+}
+
+.dialogue-bubble .narrative-choice {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid rgba(77, 151, 119, 0.34);
+  border-radius: 7px;
+  background: rgba(245, 252, 246, 0.9);
+  color: var(--ac-brown);
+  text-align: left;
+  line-height: 1.35;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.dialogue-bubble .narrative-choice span {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ac-mint-dark);
+  color: white;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.dialogue-bubble .narrative-choice:hover {
+  border-color: rgba(77, 151, 119, 0.68);
+  background: rgba(231, 247, 235, 0.98);
 }
 
 .chat-stream {
@@ -319,6 +347,23 @@ input:focus-visible {
   color: var(--ac-mint-dark);
   font-size: 12px;
   font-weight: 900;
+}
+
+.chat-line--typing::after {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 2px;
+  background: var(--ac-mint-dark);
+  content: "";
+  vertical-align: -0.15em;
+  animation: chat-caret-blink 0.82s steps(1, end) infinite;
+}
+
+@keyframes chat-caret-blink {
+  50% {
+    opacity: 0;
+  }
 }
 
 .chat-line--player {
@@ -563,10 +608,10 @@ input:focus-visible {
 .status-line {
   position: absolute;
   left: 24px;
-  right: 24px;
+  width: 340px;
   bottom: 12px;
   margin: 0;
-  text-align: center;
+  text-align: left;
   color: var(--ac-soft-brown);
   font-size: 12px;
   font-weight: 700;
