@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CapsuleWindow } from "./components/CapsuleWindow";
 import { FloatingWindow } from "./components/FloatingWindow";
 import type { OmegaState } from "./types";
@@ -64,7 +64,6 @@ export function App() {
     return () => window.removeEventListener("popstate", syncView);
   }, []);
 
-  // ---------- 琚姩蹇冨鍊煎闀?----------
   useEffect(() => {
     async function applyGain() {
       const s = await window.omega.state.getOmegaState();
@@ -76,19 +75,16 @@ export function App() {
           lastActiveTime: update.lastActiveTime ?? Date.now(),
         });
       } else {
-        // 鍗充娇娌℃湁鏀剁泭涔熸洿鏂?lastActiveTime
         await window.omega.state.updateOmegaState({
           lastActiveTime: Date.now(),
         });
       }
-      // 閲嶆柊璇诲彇 state
       const next = await window.omega.state.getOmegaState();
       setState(next);
     }
 
     void applyGain();
 
-    // 姣?30 鍒嗛挓妫€鏌ヤ竴娆?
     const interval = setInterval(() => void applyGain(), 30 * 60_000);
     return () => clearInterval(interval);
   }, []);
@@ -101,7 +97,13 @@ export function App() {
 
   if (!loaded) {
     return (
-      <div className="loading-screen">鎯?姝ｅ湪鏍″噯缁村害杞崲鍣?..</div>
+      <div className="loading-screen-game">
+        <div className="loading-screen-game__content">
+          <h1 className="loading-screen-game__title">DESKTOP SPACE</h1>
+          <p className="loading-screen-game__subtitle">Calibrating dimensional bridge...</p>
+          <div className="loading-screen-game__bar"><div className="loading-screen-game__bar-fill" /></div>
+        </div>
+      </div>
     );
   }
 
@@ -110,11 +112,17 @@ export function App() {
   }
 
   return (
-    <FloatingWindow
-      state={state}
-      setState={setState}
-      updateState={updateState}
-    />
+    <>
+      <div className="starfield-bg">
+        <div className="shooting-star" />
+        <div className="shooting-star" />
+        <div className="shooting-star" />
+      </div>
+      <FloatingWindow
+        state={state}
+        setState={setState}
+        updateState={updateState}
+      />
+    </>
   );
 }
-

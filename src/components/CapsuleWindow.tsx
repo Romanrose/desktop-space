@@ -1,10 +1,11 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense } from "react";
 import type { OmegaState } from "../types";
 import { CapsuleScene } from "./CapsuleScene";
 import { getCleanCapsuleDialogue, applyMilestoneReward } from "../systems/storyMilestones";
 import DecorationPanel from "./DecorationPanel";
 import BookshelfPanel from "./BookshelfPanel";
-import Room2Scene from "./Room2Scene";
+// Lazy Room2Scene (pixi.js v7 API mismatch)
 
 type Props = {
   state: OmegaState;
@@ -203,14 +204,16 @@ export function CapsuleWindow({ state, updateState }: Props) {
           </button>
         </section>
       ) : inRoom2 ? (
-        <Room2Scene
-          emotion={state.emotion}
-          equippedDecorations={state.equippedDecorations ?? {}}
-          onBackToMainRoom={() => setInRoom2(false)}
-          lowMood={state.mood < 15}
-          state={state}
-          updateState={updateState}
-        />
+        <Suspense fallback={<div className="desk-hint">Loading...</div>}>
+          <LazyRoom2
+            emotion={state.emotion}
+            equippedDecorations={state.equippedDecorations ?? {}}
+            onBackToMainRoom={() => setInRoom2(false)}
+            lowMood={state.mood < 15}
+            state={state}
+            updateState={updateState}
+          />
+        </Suspense>
       ) : bookshelfShow ? (
         <BookshelfPanel
           state={state}
@@ -244,3 +247,4 @@ export function CapsuleWindow({ state, updateState }: Props) {
     </main>
   );
 }
+const LazyRoom2 = lazy(() => import("./Room2Scene"));

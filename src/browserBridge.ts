@@ -1,4 +1,4 @@
-﻿import type { ChatLine, OmegaAIResponse, OmegaState } from "./types";
+import type { ChatLine, OmegaAIResponse, OmegaState } from "./types";
 
 const defaultState: OmegaState = {
   nickname: "",

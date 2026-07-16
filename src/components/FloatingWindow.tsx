@@ -1,6 +1,6 @@
 ﻿import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChatLine, OmegaAIResponse, OmegaState } from "../types";
-import Live2DModel from "../components/Live2DModel";
+import Live2DModel, { type AnimationId } from "../components/Live2DModel";
 import {
   getAffectionLevel,
   isIdleActionExpired,
@@ -79,6 +79,7 @@ export function FloatingWindow({ state, setState, updateState }: Props) {
   const [moodFlash, setMoodFlash] = useState<string | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
   const [clickBubble, setClickBubble] = useState<string | null>(null);
+  const [animation, setAnimation] = useState<AnimationId>("idle");
   const [idleHint, setIdleHint] = useState(false);
   const [sleeping, setSleeping] = useState(false);
   const [sleepTimer, setSleepTimer] = useState(60);
@@ -369,6 +370,7 @@ export function FloatingWindow({ state, setState, updateState }: Props) {
     setTimeout(() => setClickBubble(null), 4000);
     setMenu(menu ? null : "root");
     wakeUp();
+    setAnimation("click");
   }
 
   // ---------- ESC 关闭面板 ----------
@@ -390,6 +392,18 @@ export function FloatingWindow({ state, setState, updateState }: Props) {
 
   // 低心境时气泡菜单是否特殊显示
   const moodLocked = isLowMood(state);
+
+  const handleAnimationEnd = useCallback(() => {
+    setAnimation("idle");
+  }, []);
+
+  useEffect(() => {
+    if (state.emotion === "sad" || state.emotion === "fearful") {
+      setAnimation("angry");
+    } else if (animation === "angry") {
+      setAnimation("idle");
+    }
+  }, [state.emotion]);
 
   // 待机行为的中文标签
   const idleActionLabel: Record<string, string> = {
@@ -464,11 +478,11 @@ export function FloatingWindow({ state, setState, updateState }: Props) {
         }}
       >
         <Live2DModel
-          modelPath="/live2d/omega/omega.model3.json"
+          animationId={animation}
+          onAnimationEnd={handleAnimationEnd}
           scale={0.65}
           emotion={state.emotion}
           mousePos={mousePos}
-          onClick={() => handleAvatarClick()}
         />
       </button>
 
