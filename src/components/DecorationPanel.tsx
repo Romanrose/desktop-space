@@ -140,7 +140,7 @@ export default function DecorationPanel({
                   </span>
                   {currentEquipped ? (
                     <span className="decoration-panel__slot-equipped">
-                      ✅ {currentEquipped.name}
+                      {currentEquipped.emoji} {currentEquipped.name}
                     </span>
                   ) : (
                     <span className="decoration-panel__slot-empty">空</span>
@@ -165,7 +165,7 @@ export default function DecorationPanel({
                           }`}
                         >
                           <div className="decoration-panel__item-info">
-                            <strong>{recipe.name}</strong>
+                            <span className="decoration-panel__item-emoji">{recipe.emoji}</span><strong>{recipe.name}</strong>
                             <p>{recipe.effect}</p>
                           </div>
                           {isActive ? (

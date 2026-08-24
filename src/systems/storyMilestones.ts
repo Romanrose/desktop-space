@@ -6,6 +6,7 @@
  */
 
 import type { OmegaState } from "../types";
+import { createInitialDiary } from "./writing";
 
 /** 所有可用里程碑 ID 列表 */
 export const ALL_MILESTONES = [
@@ -61,6 +62,38 @@ export function getCleanCapsuleDialogue() {
   return CLEAN_DIALOGUES;
 }
 
+/* ---------- M6 游戏解锁条件（预测案） ---------- */
+
+export const GENSHIN_UNLOCK_MS = 10 * 60 * 1000;
+
+export function hasCraftedGameConsole(state: OmegaState): boolean {
+  return (state.purchasedItems ?? []).includes("game_console");
+}
+
+/** 四项条件全部满足时 M6 才成立 */
+export function isGameUnlockReady(state: OmegaState): boolean {
+  return (
+    hasCraftedGameConsole(state) &&
+    (state.affinity ?? 0) >= 50 &&
+    (state.totalGenshinMs ?? 0) >= GENSHIN_UNLOCK_MS &&
+    Boolean(state.genshinDiscussed)
+  );
+}
+
+/** 未满足时返回给玩家的可读条件提示，满足时返回 null */
+export function getGameUnlockReason(state: OmegaState): string | null {
+  if (isGameUnlockReady(state)) return null;
+  const missing: string[] = [];
+  if (!hasCraftedGameConsole(state)) missing.push("先在合成机里造一台游戏机");
+  if ((state.affinity ?? 0) < 50) missing.push("好感度需要达到 50");
+  if ((state.totalGenshinMs ?? 0) < GENSHIN_UNLOCK_MS) {
+    const minutes = Math.floor((state.totalGenshinMs ?? 0) / 60000);
+    missing.push(`原神还需再运行 ${10 - minutes} 分钟`);
+  }
+  if (!state.genshinDiscussed) missing.push("和 Ω 聊聊原神");
+  return missing.join("；");
+}
+
 /* ---------- 里程碑检查 ---------- */
 
 export type MilestoneCheck = {
@@ -111,6 +144,13 @@ export function checkMilestones(state: OmegaState): MilestoneCheck {
     return {
       triggered: "m5_construction",
       bubbleText: "这些图纸……也许可以派上用场。",
+    };
+  }
+
+  if (!completed.has("m6_game_unlock") && isGameUnlockReady(state)) {
+    return {
+      triggered: "m6_game_unlock",
+      bubbleText: "这台游戏机……我想我已经准备好了。",
     };
   }
 
@@ -165,10 +205,20 @@ export function applyMilestoneReward(
       partial.mood = Math.min(1000, (currentState.mood ?? 0) + 10);
       partial.emotion = "proud";
       break;
+    case "m6_game_unlock":
+      partial.unlocked = {
+        ...(currentState.unlocked ?? {}),
+        game: true,
+      };
+      break;
     case "m7_writing":
+      // M7 的奖励不只是显示书架：先写下第一篇日记，之后由书架按两天节奏续写。
+      const firstDiary = createInitialDiary(currentState);
       partial.mood = Math.min(1000, (currentState.mood ?? 0) + 20);
       partial.affinity = (currentState.affinity ?? 0) + 5;
       partial.emotion = "calm_positive";
+      partial.stories = [...(currentState.stories ?? []), firstDiary].slice(-999);
+      partial.lastWritingAt = firstDiary.createdAt;
       partial.unlocked = {
         ...(currentState.unlocked ?? {}),
         bookshelf: true,

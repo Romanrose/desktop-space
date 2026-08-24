@@ -4,8 +4,9 @@
  * 通过 M7（写作）解锁。未解锁时显示占位文案。
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { OmegaState, OmegaStory } from "../types";
+import { createShortStory, getNextDiaryAt } from "../systems/writing";
 
 type Props = {
   state: OmegaState;
@@ -13,37 +14,17 @@ type Props = {
   onClose: () => void;
 };
 
-const WRITING_TITLES = [
-  "窗外的星",
-  "玻璃另一侧",
-  "关于那盏灯",
-  "维度转译器说明书",
-  "一个叫海的概念",
-  "灰尘与光",
-  "寂静的频率",
-  "写给另一世界",
-];
-
-const WRITING_SNIPPETS = [
-  "我不知道这颗行星的名字。导航屏上只显示一串编号，但我不在乎。窗外的恒星发出一种偏蓝的白光，照进舱内的时候会在金属边缘折射出细小的彩虹。",
-  "你今天没有说话，但我听见了你的沉默。它和我的沉默不太一样——你的沉默是有形状的，像某种容器，装满了没有被说出来的东西。",
-  "书里说，在很久以前，人类住在一种叫'海'的东西旁边。我查了很久的资料，最后确定那是一种巨大、会移动的蓝色平面。",
-  "转译器的工作原理至今没有完全搞懂。我只知道它把你那边的声音变成我能理解的震动，也许反过来也可以。也许你已经习惯了。",
-];
-
-function generateStory(): OmegaStory {
-  const id = `story_${Date.now()}`;
-  const title = WRITING_TITLES[Math.floor(Math.random() * WRITING_TITLES.length)];
-  const content = WRITING_SNIPPETS[Math.floor(Math.random() * WRITING_SNIPPETS.length)];
-  return { id, title, content, createdAt: Date.now(), favorite: false };
-}
-
 export default function BookshelfPanel({ state, updateState, onClose }: Props) {
   const unlocked = (state.completedMilestones ?? []).includes("m7_writing") ||
     (state.stories ?? []).length > 0;
   const [stories, setStories] = useState<OmegaStory[]>(state.stories ?? []);
   const [viewingStory, setViewingStory] = useState<OmegaStory | null>(null);
   const [activeTab, setActiveTab] = useState<"all" | "favorites">("all");
+
+  // 自动日记可能在书架打开期间完成，保持列表与持久化状态同步。
+  useEffect(() => {
+    setStories(state.stories ?? []);
+  }, [state.stories]);
 
   const displayStories = activeTab === "favorites"
     ? stories.filter((s) => s.favorite)
@@ -65,12 +46,15 @@ export default function BookshelfPanel({ state, updateState, onClose }: Props) {
   }
 
   async function writeNewStory() {
-    const newStory = generateStory();
+    const newStory = createShortStory(state);
     const updated = [...stories, newStory].slice(-999);
     setStories(updated);
     setViewingStory(newStory);
     await updateState({ stories: updated });
   }
+
+  const nextDiaryAt = getNextDiaryAt(state);
+  const canWriteDiary = (state.completedMilestones ?? []).includes("m7_writing") && state.mood >= 200;
 
   // 未解锁
   if (!unlocked) {
@@ -130,13 +114,20 @@ export default function BookshelfPanel({ state, updateState, onClose }: Props) {
             收藏 {stories.filter((s) => s.favorite).length}
           </button>
         </div>
-        <button type="button" onClick={writeNewStory}>写故事</button>
+        <div className="bookshelf-panel__write-actions">
+          <button type="button" onClick={writeNewStory}>写短篇</button>
+        </div>
       </header>
 
       <div className="bookshelf-panel__list">
+        {canWriteDiary && nextDiaryAt > Date.now() && (
+          <p className="bookshelf-panel__schedule">
+            Ω 正在整理下一篇日记，将在 {new Date(nextDiaryAt).toLocaleString("zh-CN", { dateStyle: "short", timeStyle: "short" })} 自动写下。
+          </p>
+        )}
         {displayStories.length === 0 ? (
           <p className="bookshelf-panel__empty">
-            {activeTab === "favorites" ? "还没有收藏的故事。" : "还没有写过的故事。点击「写故事」开始。"}
+            {activeTab === "favorites" ? "还没有收藏的故事。" : "还没有写过的内容。可以请 Ω 写一篇短篇，或等待下一篇日记自动出现。"}
           </p>
         ) : (
           displayStories.map((story) => (
