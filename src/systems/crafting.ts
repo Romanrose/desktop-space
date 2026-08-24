@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 合成机配方系统
  *
  * 管理合成配方数据、解锁条件检查和合成消耗。
@@ -30,6 +30,8 @@ export type CraftRecipe = {
   id: string;
   name: string;
   category: CraftCategory;
+  /** 临时 emoji 占位素材 */
+  emoji: string;
   /** 显示用的类别标签 */
   categoryLabel: string;
   /** 消耗心境值 */
@@ -62,6 +64,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   // === 太空舱美化（需 M2 清洁完成） ===
   {
     id: "capsule_wallpaper_1",
+    emoji: "🖼️",
     name: "一整套新风格墙纸",
     category: "capsule_wallpaper",
     categoryLabel: "壁纸",
@@ -74,6 +77,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   },
   {
     id: "capsule_floor_1",
+    emoji: "🟫",
     name: "一整套新风格地板",
     category: "capsule_floor",
     categoryLabel: "地板",
@@ -86,6 +90,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   },
   {
     id: "capsule_shelf_1",
+    emoji: "📚",
     name: "一整套新风格书架",
     category: "capsule_shelf",
     categoryLabel: "书架",
@@ -98,6 +103,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   },
   {
     id: "capsule_desk_1",
+    emoji: "🪑",
     name: "一整套新风格书桌",
     category: "capsule_desk",
     categoryLabel: "书桌",
@@ -110,6 +116,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   },
   {
     id: "capsule_desk_2",
+    emoji: "🪑",
     name: "单独风格书桌1",
     category: "capsule_desk",
     categoryLabel: "书桌",
@@ -122,6 +129,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   },
   {
     id: "capsule_desk_3",
+    emoji: "🪑",
     name: "单独风格书桌2",
     category: "capsule_desk",
     categoryLabel: "书桌",
@@ -136,6 +144,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   // === 书桌摆件（需 M2） ===
   {
     id: "desk_books",
+    emoji: "📖",
     name: "一摞书",
     category: "capsule_desk_ornament",
     categoryLabel: "书桌摆件",
@@ -148,6 +157,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   },
   {
     id: "desk_ornament",
+    emoji: "🎀",
     name: "可爱摆件",
     category: "capsule_desk_ornament",
     categoryLabel: "书桌摆件",
@@ -162,6 +172,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   // === 功能物品 ===
   {
     id: "game_console",
+    emoji: "🎮",
     name: "游戏机",
     category: "function_item",
     categoryLabel: "功能",
@@ -170,10 +181,11 @@ export const ALL_RECIPES: CraftRecipe[] = [
     flavor: "制造之后就可以打游戏了。",
     unlockCondition: "无",
     isUnlocked: () => true,
-    apply: (s) => ({ unlocked: { ...s.unlocked, game: true } }),
+    apply: () => ({}),
   },
   {
     id: "planting_tools",
+    emoji: "🪴",
     name: "一些种子和一些种植工具",
     category: "function_item",
     categoryLabel: "功能",
@@ -188,6 +200,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   // === 空间2扩建（需 M5） ===
   {
     id: "blueprint_expand",
+    emoji: "📐",
     name: "太空舱扩建图纸",
     category: "blueprint",
     categoryLabel: "图纸",
@@ -200,6 +213,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   },
   {
     id: "material_tools",
+    emoji: "🔧",
     name: "扩建工具",
     category: "material",
     categoryLabel: "材料",
@@ -219,6 +233,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   },
   {
     id: "material_supplies",
+    emoji: "🧱",
     name: "扩建材料",
     category: "material",
     categoryLabel: "材料",
@@ -240,6 +255,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   // === 空间2装饰（需扩建完成） ===
   {
     id: "room2_wallpaper",
+    emoji: "🖼️",
     name: "新壁纸（等美工设计）",
     category: "room2_wallpaper",
     categoryLabel: "空间2壁纸",
@@ -252,6 +268,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   },
   {
     id: "room2_floor",
+    emoji: "🟫",
     name: "新地板（等美工设计）",
     category: "room2_floor",
     categoryLabel: "空间2地板",
@@ -264,6 +281,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   },
   {
     id: "vase",
+    emoji: "🏺",
     name: "白瓷花瓶",
     category: "room2_decor",
     categoryLabel: "装饰",
@@ -276,6 +294,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   },
   {
     id: "wall_lamp",
+    emoji: "💡",
     name: "壁挂灯",
     category: "room2_decor",
     categoryLabel: "装饰",
@@ -288,6 +307,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   },
   {
     id: "small_table",
+    emoji: "🪑",
     name: "小茶几",
     category: "room2_decor",
     categoryLabel: "装饰",
@@ -300,6 +320,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   },
   {
     id: "window",
+    emoji: "🪟",
     name: "窗户",
     category: "room2_decor",
     categoryLabel: "装饰",
@@ -312,6 +333,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   },
   {
     id: "planet_model",
+    emoji: "🌍",
     name: "行星模型",
     category: "room2_decor",
     categoryLabel: "装饰",
@@ -324,6 +346,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   },
   {
     id: "plant",
+    emoji: "🌱",
     name: "绿色植物",
     category: "room2_decor",
     categoryLabel: "装饰",
@@ -336,6 +359,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   },
   {
     id: "bean_bag",
+    emoji: "🛁",
     name: "懒人沙发",
     category: "room2_decor",
     categoryLabel: "装饰",
@@ -348,6 +372,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   },
   {
     id: "wardrobe",
+    emoji: "🧥",
     name: "衣橱",
     category: "room2_decor",
     categoryLabel: "装饰",
@@ -360,6 +385,7 @@ export const ALL_RECIPES: CraftRecipe[] = [
   },
   {
     id: "record_player",
+    emoji: "🎵",
     name: "唱片机",
     category: "room2_decor",
     categoryLabel: "装饰",

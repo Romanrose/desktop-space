@@ -5,3 +5,5 @@ dist-electron/
 *.log
 .env
 .env.local
+
+*.zip
