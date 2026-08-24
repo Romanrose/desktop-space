@@ -20,6 +20,7 @@ const defaultState: OmegaState = {
   capsuleDecoration: {},
   equippedDecorations: {},
   stories: [],
+  lastWritingAt: 0,
   room2Unlocked: false,
   room2Furniture: {},
   sessionStartTime: Date.now(),
@@ -33,6 +34,8 @@ const defaultState: OmegaState = {
   completedMilestones: [],
   lastGreetingTime: 0,
   pendingMilestoneEvent: null,
+  genshinDiscussed: false,
+  totalGenshinMs: 0,
 };
 
 const stateKey = "omega.browser.state";
@@ -107,22 +110,23 @@ function inferReply(text: string, state: OmegaState): OmegaAIResponse {
     unlocked: {
       ...state.unlocked,
       activeGreeting: state.unlocked.activeGreeting || state.mood + moodDelta > 50
-    }
+    },
+    genshinDiscussed: state.genshinDiscussed || /原神|genshin/i.test(text)
   };
   const reply =
     featureIntent === "capsule"
       ? "我可以回太空舱看看。那里还有很多地方没整理好，不过有你在，我会慢慢来。"
       : featureIntent === "focus"
-        ? "那我陪你安静一会儿。你做你的事，我在旁边看书。"
+        ? "那我陪你安静一会儿。你做你的事，我在旁边看书，偶尔抬头确认你还在。"
         : featureIntent === "alarm"
-          ? "可以。我现在还不能真的发出声音，但我会认真记住这件事。"
+          ? "可以。我现在还不能真的发出声音，但我会认真记住这件事，时间到了就来叫你。"
           : featureIntent === "game"
-            ? "游戏功能还没有完全解锁。我需要先认识那款游戏。"
+            ? "游戏功能还没有完全解锁。我需要先认识那款游戏，也需要更相信自己的手不会乱按。"
             : sad
-              ? "我听见了。太空舱安静得有些过分，所以我知道那种不太好受的感觉。"
+              ? "我听见了。太空舱安静得有些过分，所以我知道那种不太好受的感觉。你可以慢慢说，我在这里。"
               : happy
                 ? "嗯，我也有一点开心。像是舱壁上的灯忽然稳定了一些。"
-                : "我在。你说的话会被我认真收起来。";
+                : "我在。你说的话会被我认真收起来，虽然我还不太擅长把感谢说得自然。";
 
   return {
     reply,
@@ -172,12 +176,23 @@ export function installBrowserBridge() {
   if (window.omega) return;
 
   window.omega = {
+  gamebot: {
+    start: async () => {
+      console.log("[Browser] gamebot start requested - not available in browser mode");
+      return { success: false, error: "代打服务仅支持 Electron 桌面模式" };
+    },
+    stop: async () => ({ success: false, error: "代打服务仅支持 Electron 桌面模式" }),
+    status: async () => ({ running: false, engineReady: false, currentTask: null, pid: null, startedAt: null }),
+    runTask: async () => ({ success: false, taskId: "daily", message: "代打服务仅支持 Electron 桌面模式", error: "browser mode" }),
+    stopTask: async () => null,
+  },
     window: {
       openCapsule: async () => routeTo("capsule"),
       closeCapsule: async () => routeTo("floating"),
       showFloating: async () => routeTo("floating"),
       hideFloating: async () => undefined,
       setFloatingPosition: async () => undefined,
+      setResizable: async () => undefined,
       quit: async () => undefined
     },
     state: {
@@ -193,7 +208,11 @@ export function installBrowserBridge() {
         saveState(next);
         return next;
       },
-      getSessionLog: async () => [...sessionLog]
+      getSessionLog: async () => [...sessionLog],
+      clearChatMemory: async () => {
+        sessionLog.length = 0;
+        return true;
+      }
     },
     memory: {
       saveSummary: async (summary: string) => {

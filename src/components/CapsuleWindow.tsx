@@ -1,10 +1,12 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
+﻿import { FormEvent, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense } from "react";
 import type { OmegaState } from "../types";
 import { CapsuleScene } from "./CapsuleScene";
 import { getCleanCapsuleDialogue, applyMilestoneReward } from "../systems/storyMilestones";
 import DecorationPanel from "./DecorationPanel";
 import BookshelfPanel from "./BookshelfPanel";
-import Room2Scene from "./Room2Scene";
+import M0Prologue from "./M0Prologue";
+// Lazy Room2Scene (pixi.js v7 API mismatch)
 
 type Props = {
   state: OmegaState;
@@ -12,8 +14,6 @@ type Props = {
 };
 
 export function CapsuleWindow({ state, updateState }: Props) {
-  const [step, setStep] = useState(state.prologueDone ? 3 : 0);
-  const [nickname, setNickname] = useState(state.nickname);
   const [sleeping, setSleeping] = useState(false);
   const [sleepCountdown, setSleepCountdown] = useState(60);
   const [cleanDialogueIndex, setCleanDialogueIndex] = useState(-1);
@@ -68,53 +68,9 @@ export function CapsuleWindow({ state, updateState }: Props) {
     }
   }, [cleanDialogue, cleanDialogueIndex, state.completedMilestones]);
 
-  async function submitNickname(event: FormEvent) {
-    event.preventDefault();
-    if (!nickname.trim()) return;
-    await updateState({ nickname: nickname.trim(), currentMode: "prologue" });
-    setStep(2);
-  }
-
-  async function finishPrologue() {
-    await updateState({
-      prologueDone: true,
-      currentMode: "idle",
-      mood: Math.max(30, state.mood + 1),
-      emotion: "calm_positive",
-      lastActiveTime: Date.now(),
-    });
-    await window.omega.window.showFloating();
-    await window.omega.window.closeCapsule();
-  }
-
-  if (!state.prologueDone && step < 2) {
-    return (
-      <main className="prologue-screen">
-        {step === 0 && (
-          <section className="prologue-copy">
-            <p>{'\u201C\u2026\u2026\u4F60\u80FD\u770B\u89C1\u6211\uFF1F\u201D'}</p>
-            <p>{'\u8FD9\u91CC\u4E0D\u662F\u84DD\u661F\uFF0C\u4E5F\u4E0D\u662F\u592A\u7A7A\u7AD9\u3002\u7A97\u5916\u7684\u6052\u661F\u5DF2\u7ECF\u7184\u706D\u5F88\u4E45\u4E86\u3002'}</p>
-            <button type="button" onClick={() => setStep(1)}>
-              {'\u4F60\u662F\u8C01\uFF1F'}
-            </button>
-          </section>
-        )}
-        {step === 1 && (
-          <form className="nickname-form" onSubmit={submitNickname}>
-            <p>{'\u6211\u53EB\u03A9\u3002\u7EF4\u5EA6\u7FFB\u8BD1\u5668\u628A\u4F60\u7684\u58F0\u97F3\u9001\u5230\u4E86\u8FD9\u91CC\u3002'}</p>
-            <label>
-              {'\u6211\u5E94\u8BE5\u600E\u4E48\u79F0\u547C\u4F60\uFF1F'}
-              <input
-                value={nickname}
-                onChange={(event) => setNickname(event.currentTarget.value)}
-                autoFocus
-              />
-            </label>
-            <button type="submit">{'\u786E\u5B9A'}</button>
-          </form>
-        )}
-      </main>
-    );
+  // Pre-prologue: show M0 开篇序章
+  if (!state.prologueDone) {
+    return <M0Prologue state={state} updateState={updateState} />;
   }
 
   return (
@@ -122,9 +78,6 @@ export function CapsuleWindow({ state, updateState }: Props) {
       <header className="capsule-topbar">
         <div>
           <strong>{'\u03A9 \u592A\u7A7A\u8231'}</strong>
-          {!state.prologueDone && (
-            <span>{'WASD \u79FB\u52A8\uFF0C\u9760\u8FD1\u4E66\u684C\u540E\u5355\u51FB\u4EA4\u4E92'}</span>
-          )}
           {lowMoodGuide && !sleeping && (
             <span className="low-mood-guide">
               {'\u03A9\u592A\u7D2F\u4E86\u2026\u2026\u8D70\u5230\u5E8A\u94FA\u9644\u8FD1\u4F11\u606F\u5427'}
@@ -203,14 +156,16 @@ export function CapsuleWindow({ state, updateState }: Props) {
           </button>
         </section>
       ) : inRoom2 ? (
-        <Room2Scene
-          emotion={state.emotion}
-          equippedDecorations={state.equippedDecorations ?? {}}
-          onBackToMainRoom={() => setInRoom2(false)}
-          lowMood={state.mood < 15}
-          state={state}
-          updateState={updateState}
-        />
+        <Suspense fallback={<div className="desk-hint">Loading...</div>}>
+          <LazyRoom2
+            emotion={state.emotion}
+            equippedDecorations={state.equippedDecorations ?? {}}
+            onBackToMainRoom={() => setInRoom2(false)}
+            lowMood={state.mood < 15}
+            state={state}
+            updateState={updateState}
+          />
+        </Suspense>
       ) : bookshelfShow ? (
         <BookshelfPanel
           state={state}
@@ -233,7 +188,7 @@ export function CapsuleWindow({ state, updateState }: Props) {
           mood={state.mood}
           equippedDecorations={state.equippedDecorations ?? {}}
           capsuleBackgroundDirty={state.capsuleBackgroundDirty}
-          onDeskInteract={state.prologueDone ? undefined : finishPrologue}
+          onDeskInteract={state.prologueDone ? undefined : () => {}}
           onBedInteract={lowMoodGuide ? handleBedRest : undefined}
           lowMood={state.mood < 15}
           room2Unlocked={state.room2Unlocked ?? false}
@@ -244,3 +199,4 @@ export function CapsuleWindow({ state, updateState }: Props) {
     </main>
   );
 }
+const LazyRoom2 = lazy(() => import("./Room2Scene"));
