@@ -1,4 +1,4 @@
-import { Application, Assets, Container, Graphics, Sprite, Text, Texture, Ticker } from "pixi.js";
+import { Application, BaseTexture, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 import { useEffect, useRef, useState } from "react";
 import type { OmegaEmotion } from "../types";
 
@@ -14,6 +14,7 @@ type Props = {
   mood: number;
   equippedDecorations?: Record<string, string>;
   capsuleBackgroundDirty?: boolean;
+  deskHighlighted?: boolean;
 };
 
 type Position = { x: number; y: number };
@@ -30,10 +31,13 @@ export function CapsuleScene({
   mood,
   equippedDecorations = {},
   capsuleBackgroundDirty = true,
+  deskHighlighted = false,
 }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const appRef = useRef<Application | null>(null);
   const playerRef = useRef<Container | null>(null);
+  const faceRef = useRef<Graphics | null>(null);
+  const deskGlowRef = useRef<Graphics | null>(null);
   const positionRef = useRef<Position>({ x: 512, y: 444 });
   const keysRef = useRef(new Set<string>());
   const [nearDesk, setNearDesk] = useState(false);
@@ -62,13 +66,13 @@ export function CapsuleScene({
     window.addEventListener("keyup", keyUp);
 
     async function init() {
-      const app = new Application();
-      await app.init({
+      const app = new Application({
         width: hostElement.clientWidth,
         height: hostElement.clientHeight,
-        backgroundAlpha: 0,
+        transparent: true,
         antialias: true,
-        resizeTo: hostElement,
+        resolution: window.devicePixelRatio || 1,
+        autoDensity: true,
       });
 
       if (disposed) {
@@ -77,7 +81,7 @@ export function CapsuleScene({
       }
 
       appRef.current = app;
-      hostElement.appendChild(app.canvas);
+      hostElement.appendChild(app.view as unknown as Node);
 
       // --- Background image layer ---
       try {
@@ -119,7 +123,8 @@ export function CapsuleScene({
         console.warn("Omega image load failed, using fallback draw", err);
       }
 
-      const player = drawOmega(emotion, omegaTexture);
+      const { root: player, face: initialFace } = drawOmega(emotion, omegaTexture);
+      faceRef.current = initialFace;
       player.position.set(positionRef.current.x, positionRef.current.y);
       player.visible = true;
       playerRef.current = player;
@@ -176,8 +181,8 @@ export function CapsuleScene({
       window.addEventListener("resize", handleResize);
 
       // --- Tick loop ---
-      app.ticker.add((ticker: Ticker) => {
-        const speed = 3.1 * ticker.deltaTime;
+      app.ticker.add((dt: number) => {
+        const speed = 3.1 * dt;
         const pos = positionRef.current;
         if (keysRef.current.has("w")) pos.y -= speed;
         if (keysRef.current.has("s")) pos.y += speed;
@@ -236,7 +241,14 @@ export function CapsuleScene({
       appRef.current = null;
       hostElement.replaceChildren();
     };
-  }, [emotion, prologueDone, lowMood, mood, room2Unlocked, equippedDecorations, capsuleBackgroundDirty]);
+  }, [prologueDone, lowMood, mood, room2Unlocked, equippedDecorations, capsuleBackgroundDirty]);
+
+  // Reactive face updates when emotion changes
+  useEffect(() => {
+    if (faceRef.current) {
+      drawFaceGraphics(faceRef.current, emotion);
+    }
+  }, [emotion]);
 
   return (
     <section className="scene-wrap">
@@ -270,7 +282,16 @@ function loadImageAsTexture(
   _renderer: import("pixi.js").Renderer,
   url: string
 ): Promise<Texture> {
-  return Assets.load<Texture>(url);
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const base = new BaseTexture(img);
+      resolve(new Texture(base));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
 }
 
 /** Draw subtle decoration overlays based on equipped items. */
@@ -295,71 +316,49 @@ function drawDecorationOverlay(
     stage.addChild(vignette);
   }
 
-  // Equipped wallpaper: subtle colored wall border glow
+  // Equipped wallpaper: emoji placeholder
   if (equipped.wallpaper || equipped.capsule_wallpaper) {
-    const wallGlow = new Graphics();
-    wallGlow.lineStyle(4, 0x88ccff, 0.15);
-    wallGlow.drawPolygon([
-      82, wallTop,
-      width - 82, wallTop,
-      width - 18, 135,
-      width - 78, wallBottom,
-      78, wallBottom,
-      18, 135,
-    ]);
-    wallGlow.lineStyle(0);
-    stage.addChild(wallGlow);
+    const text = new Text("🖼️", { fill: 0x88ccff, fontSize: 32 });
+    text.anchor.set(0.5);
+    text.position.set(width * 0.5, wallTop + 40);
+    text.alpha = 0.6;
+    stage.addChild(text);
   }
 
-  // Equipped floor: subtle floor accent
+  // Equipped floor: emoji placeholder
   if (equipped.floor || equipped.capsule_floor) {
-    const floorAccent = new Graphics();
-    floorAccent.beginFill(0x88ccff, 0.04);
-    floorAccent.drawPolygon([
-      78, wallBottom,
-      width - 78, wallBottom,
-      width - 168, height - 28,
-      168, height - 28,
-    ]);
-    floorAccent.endFill();
-    floorAccent.lineStyle(2, 0x88ccff, 0.12);
-    floorAccent.moveTo(78, wallBottom);
-    floorAccent.lineTo(width - 78, wallBottom);
-    floorAccent.lineStyle(0);
-    stage.addChild(floorAccent);
+    const text = new Text("🿫", { fill: 0x88ccff, fontSize: 28 });
+    text.anchor.set(0.5);
+    text.position.set(width * 0.5, wallBottom + 30);
+    text.alpha = 0.6;
+    stage.addChild(text);
   }
 
-  // Equipped desk ornament: small glowing dot on desk
+  // Equipped desk ornament: emoji placeholder
   if (equipped.desk_ornament || equipped.capsule_desk_ornament) {
-    const ornament = new Graphics();
-    ornament.beginFill(0x88ddff, 0.25);
-    ornament.drawCircle(cx + 100, deskY - 18, 10);
-    ornament.endFill();
-    ornament.lineStyle(1.5, 0x88ddff, 0.3);
-    ornament.drawCircle(cx + 100, deskY - 18, 10);
-    ornament.lineStyle(0);
-    stage.addChild(ornament);
+    const text = new Text("🎀", { fill: 0x88ddff, fontSize: 28 });
+    text.anchor.set(0.5);
+    text.position.set(cx + 100, deskY - 18);
+    text.alpha = 0.8;
+    stage.addChild(text);
   }
 
-  // Equipped window decoration: subtle light glow
+  // Equipped window decoration: emoji placeholder
   if (equipped.window || equipped.capsule_window) {
-    const windowDecor = new Graphics();
-    windowDecor.beginFill(0x00ccff, 0.06);
-    windowDecor.drawCircle(cx + 180, deskY - 70, 16);
-    windowDecor.endFill();
-    windowDecor.lineStyle(1, 0x00ccff, 0.15);
-    windowDecor.drawCircle(cx + 180, deskY - 70, 16);
-    windowDecor.lineStyle(0);
-    stage.addChild(windowDecor);
+    const text = new Text("🪟", { fill: 0x00ccff, fontSize: 28 });
+    text.anchor.set(0.5);
+    text.position.set(cx + 180, deskY - 70);
+    text.alpha = 0.7;
+    stage.addChild(text);
   }
 
-  // Equipped desk: subtle desk edge highlight
+  // Equipped desk: emoji placeholder
   if (equipped.desk || equipped.capsule_desk) {
-    const deskHighlight = new Graphics();
-    deskHighlight.lineStyle(2, 0x88ccff, 0.12);
-    deskHighlight.drawRoundedRect(cx - 160, deskY, 320, 42, 6);
-    deskHighlight.lineStyle(0);
-    stage.addChild(deskHighlight);
+    const text = new Text("🪑", { fill: 0x88ccff, fontSize: 28 });
+    text.anchor.set(0.5);
+    text.position.set(cx, deskY - 24);
+    text.alpha = 0.7;
+    stage.addChild(text);
   }
 }
 
@@ -422,32 +421,32 @@ function drawUIOverlay(
   }
 }
 
-function drawOmega(emotion: OmegaEmotion, texture?: Texture) {
+function drawOmega(emotion: OmegaEmotion, texture: Texture | undefined): { root: Container; face: Graphics } {
   const root = new Container();
   if (texture) {
     const sprite = new Sprite(texture);
     sprite.anchor.set(0.5, 1);
-    sprite.width = 118;
-    sprite.height = 198;
-    sprite.y = 118;
+    sprite.width = 154;
+    sprite.height = 257;
+    sprite.y = 150;
     root.addChild(sprite);
   } else {
     const body = new Graphics();
     body.beginFill(0xfffaf0);
-    body.drawRoundedRect(-30, 26, 60, 92, 24);
+    body.drawRoundedRect(-39, 34, 78, 120, 30);
     body.endFill();
     body.lineStyle(2, 0x19c8b9);
-    body.drawRoundedRect(-30, 26, 60, 92, 24);
+    body.drawRoundedRect(-39, 34, 78, 120, 30);
     body.lineStyle(0);
     root.addChild(body);
 
     const head = new Graphics();
     head.beginFill(0xfffdf4);
-    head.drawCircle(0, 0, 38);
-    head.drawPolygon([-36, -10, -20, -48, 18, -42, 36, -8, 24, -28, -4, -36]);
+    head.drawCircle(0, 0, 49);
+    head.drawPolygon([-47, -13, -26, -62, 23, -55, 47, -10, 31, -36, -5, -47]);
     head.endFill();
     head.lineStyle(2, 0xdfd4be);
-    head.drawCircle(0, 0, 38);
+    head.drawCircle(0, 0, 49);
     head.lineStyle(0);
     root.addChild(head);
   }
@@ -455,35 +454,40 @@ function drawOmega(emotion: OmegaEmotion, texture?: Texture) {
   const moodGlow = new Graphics();
   const glowColor = emotion === "sad" || emotion === "calm_negative" ? 0x9a835a : 0x19c8b9;
   moodGlow.beginFill(glowColor, 0.2);
-  moodGlow.drawEllipse(0, 108, 44, 10);
+  moodGlow.drawEllipse(0, 140, 57, 13);
   moodGlow.endFill();
   root.addChild(moodGlow);
 
-  if (!texture) {
-    const face = new Graphics();
-    const eyeColor = emotion === "sad" || emotion === "calm_negative" ? 0x9a835a : 0x5d4037;
+  // Face always drawn on top (even over texture)
+  const face = new Graphics();
+  drawFaceGraphics(face, emotion);
+  root.addChild(face);
 
-    face.beginFill(eyeColor);
-    face.drawRoundedRect(-20, -8, 10, 4, 2);
-    face.drawRoundedRect(10, -8, 10, 4, 2);
-    face.endFill();
-
-    if (emotion === "happy" || emotion === "proud") {
-      face.lineStyle(2, 0x5d4037);
-      face.arc(0, 8, 12, 0, Math.PI);
-      face.lineStyle(0);
-    } else if (emotion === "sad") {
-      face.lineStyle(2, 0x9a835a);
-      face.arc(0, 18, 10, Math.PI, Math.PI * 2);
-      face.lineStyle(0);
-    } else {
-      face.lineStyle(2, 0x5d4037);
-      face.moveTo(-9, 13);
-      face.lineTo(9, 13);
-      face.lineStyle(0);
-    }
-    root.addChild(face);
-  }
-
-  return root;
+  return { root, face };
 }
+/** Draw or update face graphics (eyes + mouth) based on emotion. */
+function drawFaceGraphics(face: Graphics, emotion: OmegaEmotion) {
+  face.clear();
+  const eyeColor = emotion === "sad" || emotion === "calm_negative" ? 0x9a835a : 0x5d4037;
+
+  face.beginFill(eyeColor);
+  face.drawRoundedRect(-26, -10, 13, 5, 3);
+  face.drawRoundedRect(13, -10, 13, 5, 3);
+  face.endFill();
+
+  if (emotion === "happy" || emotion === "proud") {
+    face.lineStyle(2, 0x5d4037);
+    face.arc(0, 10, 16, 0, Math.PI);
+    face.lineStyle(0);
+  } else if (emotion === "sad") {
+    face.lineStyle(2, 0x9a835a);
+    face.arc(0, 23, 13, Math.PI, Math.PI * 2);
+    face.lineStyle(0);
+  } else {
+    face.lineStyle(2, 0x5d4037);
+    face.moveTo(-12, 17);
+    face.lineTo(12, 17);
+    face.lineStyle(0);
+  }
+}
+

@@ -130,7 +130,7 @@ export default function CraftingPanel({ state, updateState, onClose, setClickBub
               purchasedRecipes.map((recipe) => (
                 <div key={recipe.id} className="crafting-panel__item crafting-panel__item--done">
                   <div className="crafting-panel__item-info">
-                    <strong className="crafting-panel__item-name">{recipe.name}</strong>
+                    <span className="crafting-panel__item-emoji">{recipe.emoji}</span><span className="crafting-panel__item-emoji">{recipe.emoji}</span><strong className="crafting-panel__item-name">{recipe.name}</strong>
                     <p className="crafting-panel__item-effect">{recipe.effect}</p>
                     <p className="crafting-panel__item-flavor">"{recipe.flavor}"</p>
                   </div>

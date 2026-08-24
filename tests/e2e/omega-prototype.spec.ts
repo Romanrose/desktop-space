@@ -24,6 +24,82 @@ async function seedReadyState(page: import("@playwright/test").Page) {
 }
 
 test.describe("Ω desktop pet functional prototype", () => {
+  test("confirming M7 unlock creates the first diary and unlocks writing", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("omega.browser.state", JSON.stringify({
+        nickname: "测试员",
+        prologueDone: true,
+        mood: 600,
+        affinity: 60,
+        emotion: "calm_positive",
+        currentMode: "idle",
+        completedMilestones: [
+          "m1_first_greeting", "m2_clean_capsule", "m3_show_world",
+          "m4_childhood_story", "m5_construction", "m6_game_unlock"
+        ],
+        stories: [],
+        lastWritingAt: 0,
+        unlocked: { activeGreeting: true, cleanCapsule: true, game: true, writing: false, bookshelf: false, construction: true, gardening: false }
+      }));
+      window.localStorage.setItem("omega.browser.forceMock", "1");
+    });
+    await page.goto("/?view=floating");
+
+    await expect(page.getByText("我想写故事……")).toBeVisible();
+    await page.getByRole("button", { name: "✓" }).click();
+    await expect.poll(() => page.evaluate(() => {
+      const state = JSON.parse(window.localStorage.getItem("omega.browser.state") ?? "{}");
+      return {
+        m7: state.completedMilestones?.includes("m7_writing"),
+        writing: state.unlocked?.writing,
+        bookshelf: state.unlocked?.bookshelf,
+        stories: state.stories?.length ?? 0,
+        hasWritingTimestamp: (state.lastWritingAt ?? 0) > 0,
+      };
+    })).toEqual({
+      m7: true,
+      writing: true,
+      bookshelf: true,
+      stories: 1,
+      hasWritingTimestamp: true,
+    });
+  });
+
+  test("M7 automatically turns remembered player context into a persisted diary", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("omega.browser.state", JSON.stringify({
+        nickname: "小林",
+        prologueDone: true,
+        mood: 600,
+        affinity: 60,
+        emotion: "calm_positive",
+        currentMode: "idle",
+        completedMilestones: ["m7_writing"],
+        stories: [],
+        lastWritingAt: 0,
+        unlocked: { activeGreeting: true, cleanCapsule: true, game: false, writing: true, bookshelf: true, construction: false, gardening: false }
+      }));
+      window.localStorage.setItem("omega.browser.memories", JSON.stringify(["玩家提到：周末想去看海"]));
+      window.localStorage.setItem("omega.browser.forceMock", "1");
+    });
+    await page.goto("/?view=floating");
+
+    await expect.poll(() => page.evaluate(() => {
+      const state = JSON.parse(window.localStorage.getItem("omega.browser.state") ?? "{}");
+      return { stories: state.stories?.length ?? 0, hasWritingTimestamp: (state.lastWritingAt ?? 0) > 0 };
+    })).toEqual({ stories: 1, hasWritingTimestamp: true });
+
+    await page.getByRole("button", { name: "Ω" }).click();
+    await page.getByRole("button", { name: "事项" }).click();
+    await page.getByRole("button", { name: "书架" }).click();
+    await page.getByRole("button", { name: "写给小林的第 1 页" }).click();
+    await expect(page.getByText("太空舱日志，第 1 次记录。")).toBeVisible();
+    await expect(page.getByText(/周末想去看海/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "写日记" })).toHaveCount(0);
+    await page.locator(".bookshelf-panel--reading").getByRole("button", { name: "返回" }).click();
+    await expect(page.getByText(/自动写下/)).toBeVisible();
+  });
+
   test("default browser route starts with the prologue from the document", async ({ page }) => {
     await page.goto("/");
 

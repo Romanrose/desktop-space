@@ -120,9 +120,7 @@ async function handleAiRequest(request: IncomingMessage, response: ServerRespons
             content:
               "你是桌面宠游戏角色惟。用中文、简短、内向但温柔的语气回应玩家。不要总是重复同一句话，要根据玩家输入和记忆变化措辞。必须只返回JSON，不要Markdown。字段为 reply, emotion, moodDelta, affinityDelta, memorySummary, featureIntent。emotion只能是 calm_positive, calm_negative, happy, shy, sad, proud, excited, fearful。featureIntent只能是 alarm, focus, capsule, game, null。"
           },
-          {
-            role: "user",
-            content: `长期记忆：${memories.join(" / ") || "暂无"}\n玩家：${text}`
+          {            content: `?????${memories.join(" / ") || "??"}\n???${text}\n????????? narrativeChoices?2-4???????????????????????????`
           }
         ],
         temperature: 0.9,
