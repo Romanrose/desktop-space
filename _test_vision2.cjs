@@ -1,5 +1,10 @@
 async function test() {
-  const apiKey = "REMOVED_MIMO_API_KEY";
+  const apiKey = process.env.MIMO_API_KEY;
+  if (!apiKey) {
+    console.error("Set MIMO_API_KEY before running this test.");
+    process.exitCode = 1;
+    return;
+  }
   const baseUrl = "https://api.xiaomimimo.com/v1";
   const start = Date.now();
   try {

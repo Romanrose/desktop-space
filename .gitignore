@@ -7,3 +7,10 @@ dist-electron/
 .env.local
 
 *.zip
+
+# Local credentials and editor history
+.env
+.env.*
+!.env.example
+!.env.template
+.history/

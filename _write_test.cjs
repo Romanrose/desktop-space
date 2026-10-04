@@ -1,34 +1,6 @@
-﻿const fs = require("fs");
-const scriptPath = "C:/Users/89682/Desktop/game competition/minigame/omega/game/_test_vision2.cjs";
-const content = `async function test() {
-  const apiKey = "REMOVED_MIMO_API_KEY";
-  const baseUrl = "https://api.xiaomimimo.com/v1";
-  const start = Date.now();
-  try {
-    const r = await fetch(baseUrl + "/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + apiKey },
-      body: JSON.stringify({
-        model: "mimo-v2.5",
-        messages: [
-          { role: "system", content: "You are Omega, a 19yo desktop pet. Reply briefly in Chinese, under 50 chars. Output JSON." },
-          { role: "user", content: [
-            { type: "text", text: "Hello! How are you today?\\n\\n[screen context] User is coding in VS Code." }
-          ]}
-        ],
-        max_tokens: 200,
-        response_format: { type: "json_object" }
-      })
-    });
-    const data = await r.json();
-    console.log("status:", r.status);
-    console.log("elapsed:", Date.now() - start, "ms");
-    console.log("content:", data?.choices?.[0]?.message?.content?.substring(0, 300));
-  } catch(e) {
-    console.log("error:", e.message);
-  }
-}
-test();
-`;
+const fs = require("fs");
+const path = require("path");
+const scriptPath = path.join(__dirname, "_test_vision2.cjs");
+const content = "async function test() {\n  const apiKey = process.env.MIMO_API_KEY;\n  if (!apiKey) {\n    console.error(\"Set MIMO_API_KEY before running this test.\");\n    process.exitCode = 1;\n    return;\n  }\n  const baseUrl = \"https://api.xiaomimimo.com/v1\";\n  const start = Date.now();\n  try {\n    const r = await fetch(baseUrl + \"/chat/completions\", {\n      method: \"POST\",\n      headers: { \"Content-Type\": \"application/json\", Authorization: \"Bearer \" + apiKey },\n      body: JSON.stringify({\n        model: \"mimo-v2.5\",\n        messages: [\n          { role: \"system\", content: \"You are Omega, a 19yo desktop pet. Reply briefly in Chinese, under 50 chars. Output JSON.\" },\n          { role: \"user\", content: [\n            { type: \"text\", text: \"Hello! How are you today?\\n\\n[screen context] User is coding in VS Code.\" }\n          ]}\n        ],\n        max_tokens: 200,\n        response_format: { type: \"json_object\" }\n      })\n    });\n    const data = await r.json();\n    console.log(\"status:\", r.status);\n    console.log(\"elapsed:\", Date.now() - start, \"ms\");\n    console.log(\"content:\", data?.choices?.[0]?.message?.content?.substring(0, 300));\n  } catch(e) {\n    console.log(\"error:\", e.message);\n  }\n}\ntest();\n";
 fs.writeFileSync(scriptPath, content, "utf8");
 console.log("Written");
